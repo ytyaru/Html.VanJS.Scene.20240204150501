@@ -43,15 +43,6 @@ class UiEl {
     fromCsv(text) {
         const lines = text.split(/\r?\n/)
     }
-    #fromLines(lines, delimiter='\n') { // 画面ID,UIName,型,label,placeholder,value,attrs,datalist
-        const [sid, name, type, label, placeholder, value, attrs, datalist] = lines.split(delimiter)
-        if (!attrs) { attrs = {} }
-        attrs.id = `${sid.Chain}-${name.Chain}`
-        attrs.name = name.Camel
-        if (datalist) { attrs.list = `${attrs.id}-list` }
-        if (this._scenes.has(sid)) { this._scenes.set(sid, new Map()) }
-        if (this._scenes.get(sid).has(name)) { this._scenes.get(sid).set(name, {el:this.make(name, attrs, value), dl:this.#makeDatalist(attrs.list, datalist)) }
-    }
     */
     fromTsv(text, isHeaderTrim) {
         const scenes = new Map()
@@ -71,7 +62,6 @@ class UiEl {
         console.log(`value:${value}`)
         const attrs = ((_attrs) ? JSON.parse(_attrs) : ({}))
         const datalist = ((_datalist) ? JSON.parse(_datalist) : null)
-//        if (!attrs) { attrs = {} }
         attrs.id = `${sid.Chain}-${name.Chain}`
         attrs.name = name.Camel
         attrs.placeholder = placeholder.replace('\\n', '\n')
@@ -121,8 +111,6 @@ class UiEl {
     #makeDatalist(id, type, valueLabelObj) {
         if (!valueLabelObj) { return null }
         if (!['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===type)) { return }
-        //const data = JSON.parse(valueLabelObj)
-        //return datalist(Array.from(Object.entries(data)).map(([k,v])=>van.tags.option({value:k}, v)))
         return datalist(this.#makeOptions(valueLabelObj))
     }
     #makeSelectOptions(tagName, value, valueLabelObj) {
@@ -130,24 +118,15 @@ class UiEl {
         if ('select'!==tagName) { return null }
         console.log(valueLabelObj)
         return this.#makeOptions(valueLabelObj, value)
-//        const data = JSON.parse(valueLabelObj)
-//        return Array.from(Object.entries(data)).map(([k,v])=>van.tags.option({value:k}, v))
     }
     #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
-    #makeOptions(valueLabelObj, value) { return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
+    #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
+    //#makeOptions(valueLabelObj, value) { return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     //#makeOptions(valueLabelObj) { console.log(valueLabelObj); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v);return ((Type.isStr(v)) ? van.tags.option({value:k}, v) : this.#makeOptionGroup(k, v))}) }
     //#makeOptions(valueLabelObj) { return Array.from(Object.entries(JSON.parse(valueLabelObj))).map(([k,v])=>((Type.isStr(v)) ? van.tags.option({value:k}, v) : this.#makeOptionGroup(k, v))) }
     //#makeOptions(valueLabelObj) { return Array.from(Object.entries(JSON.parse(valueLabelObj))).map(([k,v])=>van.tags.option({value:k}, v)) }
     #makeLabel(id, text) { return van.tags.label({for:id}, text) }
-
     makeTables(scenes) { return Array.from(scenes).map(([k,v])=>this.makeTable(v, k)) }
-    /*
-    makeTables(scenes) {
-        for (let [k,v] of uiMap) {
-            van.add(document.body, div(h1(k), uiEl.makeTable(v, k)))
-        }
-    }
-    */
     makeTable(scene, k) {
         const trs = []
         for (let [k,v] of scene) {
