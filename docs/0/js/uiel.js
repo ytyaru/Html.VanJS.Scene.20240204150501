@@ -24,6 +24,7 @@ class UiEl {
         console.log(sid, name, type, label, placeholder, value, _attrs, _datalist)
         console.log(`_attrs:${_attrs}`, ((_attrs) ? 'YES' : 'NO'))
         console.log(`value:${value}`)
+        console.log(`_datalist:${_datalist}`, ((_datalist) ? 'YES' : 'NO'))
         const attrs = ((_attrs) ? JSON.parse(_attrs) : ({}))
         const datalist = ((_datalist) ? JSON.parse(_datalist) : null)
         attrs.id = `${sid.Chain}-${name.Chain}`
@@ -97,9 +98,12 @@ class UiEl {
         return null
     }
     #makeDatalist(id, type, valueLabelObj) {
-        if (!valueLabelObj) { return null }
-        if (!['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===type)) { return }
-        return van.tags.datalist(this.#makeOptions(valueLabelObj))
+        console.warn('#makeDatalist()', id, type, valueLabelObj)
+        if (!valueLabelObj) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }
+        if (!Type.isArray(valueLabelObj)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`); return null }
+        if (!['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===type)) { console.warn(`datalist作成失敗。非対応要素${type}のため。`); return null; }
+        return van.tags.datalist({id:id}, valueLabelObj.map(v=>van.tags.option({value:v})))
+        //return van.tags.datalist({id:id}, this.#makeOptions(valueLabelObj))
     }
     #makeSelectOptions(tagName, value, valueLabelObj) {
         console.log('#makeSelectOptions')
