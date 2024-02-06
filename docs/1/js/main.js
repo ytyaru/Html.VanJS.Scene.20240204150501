@@ -87,19 +87,21 @@ dl-ex	file	file	ファイル		["候補１(無効)","候補２(無効)"]
 dl-ex	sex	radio	性別		{"male":"男", "female":"女"}	
 dl-ex	isMan	check	人間か		true		
 dl-ex	editor	div					{"tabindex":0, "contenteditable":true}
+sub	title	text	タイトル	サブ画面		["候補１","候補２"]	
 `
     const uiEl = new UiEl()
     const uiMap = uiEl.fromTsv(tsv, true)
 //    for (let [k,v] of uiMap) {
 //        van.add(document.body, div(h1(k), uiEl.makeTable(v)))
 //    }
-    van.add(document.body, uiEl.makeTables(uiMap))
-    /*
+//    van.add(document.body, uiEl.makeTables(uiMap))
+
+    console.log(uiMap)
     const scenes = new Scene(uiMap)
+    van.add(document.body, van.tags.button({onclick:e=>scenes.move()},'画面遷移'))
     //scenes.setMake('sid', (v, k)=>v.el)
     scenes.addAll()
     scenes.select()
-    */
 });
 window.addEventListener('beforeunload', (event) => {
     console.log('beforeunload!!');

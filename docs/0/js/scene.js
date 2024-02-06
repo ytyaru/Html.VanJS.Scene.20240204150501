@@ -1,4 +1,52 @@
 (function(){
+class Scene {
+    //constructor(scenes) { this._scenes = scenes; this._meta = new Map();; this._selected = null; this._displays = new Map(); }
+//    constructor(scenes, makes) { this._scenes = scenes; this._meta = new Map(); this._selected = null; }
+    constructor(scenes, makeObj) {
+        this._scenes = scenes
+        this._meta = new Map()
+        this._selected = null
+        this.#setupMeta()
+        if (makeObj) { for (let [sid, fn] of Object.entries(makeObj)) { this.setMake(sid, fn) }
+    }
+    #setupMeta() {
+        for (let [k,v] of this._scenes) {
+            this._meta.set(k, {make:this.#makeTable, display:'none'})
+        }
+    }
+    setMake(sid, fn) { this._meta.get(sid).make = fn; }
+    #makeTable(scene, k) {
+        const trs = []
+        for (let [k,v] of scene) {
+            trs.push(van.tags.tr(van.tags.th(v.label), van.tags.td(v.el, v.dl)))
+        }
+        return van.tags.table(((k) ? van.tags.caption(k) : null), trs)
+    }
+    addAll(sid) {
+        van.add(document.body, Array.from(this._scenes).map(([k,v])=>this._meta.get(k)(v, k)))
+        this.#hideAll()
+        this.select(sid)
+    }
+    select(sid) {
+        //if (!this._scenes.has(sid)) { return }
+        if (!this._scenes.has(sid)) { sid = this._scenes.entries().next().value[0] } // sidが未指定なら最初の画面を選択する
+        this._selected = sid
+        this.#hideAll()
+        this.#show(sid)
+    }
+    #hideAll() {
+        for (let [k,v] of this._scenes) {
+            this._meta.get(k).display = getComputedStyle(v.el).getPropertyValue('display')
+            v.el.style.setProperty('display', 'none') // 'visibility', 'hidden'
+        }
+    }
+    #show(k) { this._scenes.get(k).el.style.setProperty('display', this._meta.get(k).display) }
+    getKv(el) {
+        const tag = el.tagName.toLowerCase()
+        if (['select','input','textarea'].some(v=>v===tag)) { return [el.id, el.value] }
+        if (el.getAttribute('contenteditable')) { return [el.id, el.innerText] }
+    }
+}
 class Scene extends Map {
     constructor(iterable) { super(iterable); this._selected = null; this._displays = new Map(); }
     json(k) {
