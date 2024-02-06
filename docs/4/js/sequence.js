@@ -33,7 +33,8 @@ class MapSequence {
     first() { this.i=0; return [this.i, this.key, this.value] }
     last() { this.i=((0<this._map.size) ? this._map.size-1 : 0); return [this.i, this.key, this.value] }
     get isFirst() { return (0===this.i) }
-    get isLast() { return ((this._map.size-1)===this.i) }
+    //get isLast() { return ((this._map.size-1)===this.i) }
+    get isLast() { return ((0<this._map.size) ? (this._map.size-1===this.i) : (0===this.i)) }
     get i() { return this._i }
     get kv() { return Array.from(this._map.entries())[this._i] }
     get key() { return Array.from(this._map.keys())[this._i] }
@@ -74,6 +75,10 @@ class Sequence {
         }
         return [this._i, this._values[this._i]]
     }
+    first() { this.i=0; return [this.i, this.key, this.value] }
+    last() { this.i=((0<this._values.length) ? this._values.length-1 : 0); return [this._i, this._values[this._i]] }
+    get isFirst() { return (0===this.i) }
+    get isLast() { return ((0<this._values.length) ? (this._values.length-1===this.i) : (0===this.i)) }
     get i() { return this._i }
     get value() { return this._values[this._i] }
     set i(v) { if (0<=v && v<=this._values.length) { this._i = v } }
