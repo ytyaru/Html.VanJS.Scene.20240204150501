@@ -1,8 +1,8 @@
 window.addEventListener('DOMContentLoaded', (event) => {
+    /*
     console.log('DOMContentLoaded!!');
     const {h1, p, a} = van.tags
     const author = 'ytyaru'
-    /*
     Scene.set('main', div(h1('メイン画面'),p('これはメイン画面です。')))
     Scene.set('sub', div(h1('サブ画面'),p('これはサブ画面です。')))
     van.add(document.querySelector('main'), 
@@ -83,8 +83,8 @@ dl-ex	month	month	月			["1999-12","2000-01"]
 dl-ex	week	week	週			["1999-W52","2000-W01"]	
 dl-ex	time	time	時刻			["00:00","23:59"]	
 dl-ex	color	color	色			["#ff0000","#00ff00","#0000ff"]	
-dl-ex	file	file	ファイル		["候補１(無効)","候補２(無効)"]	
-dl-ex	sex	radio	性別		{"male":"男", "female":"女"}	
+dl-ex	file	file	ファイル			["候補１(無効)","候補２(無効)"]	
+dl-ex	sex	radio	性別		{"male":"男", "female":"女"}		
 dl-ex	isMan	check	人間か		true		
 dl-ex	editor	div					{"tabindex":0, "contenteditable":true}
 sub	title	text	タイトル	サブ画面		["候補１","候補２"]	
@@ -93,6 +93,7 @@ sub	submit	submit			送信
 sub	save	button			保存		
 third	title	text	タイトル	第三画面		["候補１","候補２"]	
 `
+    /*
     const uiEl = new UiEl()
     const uiMap = uiEl.fromTsv(tsv, true)
 //    for (let [k,v] of uiMap) {
@@ -112,6 +113,38 @@ third	title	text	タイトル	第三画面		["候補１","候補２"]
     scenes.setMake('sub', (v, k)=>van.tags.div({id:k}, van.tags.h1(k), van.tags.p('これはsetMake()で実装した画面です。'), scenes.makeTable(v, k)))
     scenes.addAll()
     scenes.select()
+    */
+    //Scenes.gen.fromTsv(tsv, true)
+
+    const sceneMap = new SceneMap()
+    sceneMap.init(tsv, true)
+    console.log(sceneMap.get())
+    console.log(sceneMap.get('dl-ex'))
+    console.log(sceneMap.get('dl-ex', 'title'))
+    //sceneMap.setAttr('', '', '', '')
+    sceneMap.setAttr('dl-ex', 'title', 'value', 'setAttr()でvalueを変更した！')
+    sceneMap.setMake('third', (uiMap, sid)=>{
+        return van.tags.div({id:sid},
+            van.tags.h1(sid),
+            van.tags.p('任意にデザインした画面です。'),
+            SceneMakeHelper.table(uiMap, sid)
+    )})
+//    SceneMap.make('')
+    /*
+    van.add(document.body, 
+        van.tags.button({onclick:e=>scenes.move()},'画面遷移'),
+        van.tags.button({onclick:e=>scenes.first()},'最初の画面へ遷移'),
+        van.tags.button({onclick:e=>scenes.last()},'最後の画面へ遷移'),
+    )
+    */
+    const sceneTrans = new SceneTransitioner(sceneMap)
+    van.add(document.body, 
+        van.tags.button({onclick:e=>sceneTrans.move()},'画面遷移'),
+        van.tags.button({onclick:e=>sceneTrans.first()},'最初の画面へ遷移'),
+        van.tags.button({onclick:e=>sceneTrans.last()},'最後の画面へ遷移'),
+    )
+    sceneTrans.init()
+//    van.add(document.body, sceneMap.makeAll())
 });
 window.addEventListener('beforeunload', (event) => {
     console.log('beforeunload!!');

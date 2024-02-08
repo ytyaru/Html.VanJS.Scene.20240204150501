@@ -1,42 +1,38 @@
 (function(){
 class Tsv {
     static COL_SZ = 8
-    static fromStr(tsv, isHeaderTrim) { // [{sid,name,type,label,placeholder,value,datalist,attrs},...]
-        tsv = tsv.trimLine()
-        tsv = ((isHeaderTrim) ? this.#removeHeader(tsv) : tsv)
-//        const lines = tsv.split(/\r?\n/)
-        return this.#lines(tsv).map(line=>this.#objects(this.#columns(line)))
+    fromStr(tsv, isHeaderTrim) { // [{sid,name,type,label,placeholder,value,datalist,attrs},...]
+        text = text.trimLine()
+        text = ((isHeaderTrim) ? this.#removeHeader(text) : text)
+        const lines = text.split(/\r?\n/)
+        return this.#lines(text).map(line=>this.#objects(this.#columns(line)))
     }
-    static #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
-    static #lines(text) { return text.split(/\r?\n/) }
-    static #columns(line, delimiter='\t') { return line.split(delimiter) }
-    static #objects(columns) {
-        // 不足列を空値で補う
-        //if (columns.length < Tsv.COL_SZ) { [...Array(Tsv.COL_SZ - columns.length)].map(()=>columns.push('')) }
-        if (Tsv.COL_SZ !== columns.length) { throw new Error(`TSVの列数が不正です。一行あたり${Tsv.COL_SZ}列であるべきです。:${columns.length}列:${columns}`) }
+    #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
+    #lines(text) { return text.split(/\r?\n/) }
+    #columns(line, delimiter='\t') { return line.split(delimiter) }
+    #objects(columns) {
+        if (Tsv.COL_SZ !== columns.length) { throw new Error(`TSVの列数が不正です。一行あたり${Tsv.COL_SZ}列であるべきです。:${columns}`) }
         const [sid, name, type, label, placeholder, value, datalist, attrs] = columns
         return {sid:sid, eid:name, type:type, label:label, placeholder:placeholder, value:value, datalist:datalist, attrs:attrs}
     }
 }
 class TsvParser {
-    static fromTsv(tsv) { // [{tagName:, attrs:{}, detalist:{}},...]
+    fromTsv(tsv) { // [{tagName:, attrs:{}, detalist:{}},...]
         return tsv.map(column=>this.fromColumn(column))
     }
-    static fromColumn(column) {
+    fromColumn(column) {
         const obj = {}
         const attrs = ((column.attrs) ? JSON.parse(column.attrs) : ({}))
         const datalist = ((column.datalist) ? JSON.parse(column.datalist) : null)
         attrs.id = `${column.sid.Chain}-${column.eid.Chain}`
         attrs.name = column.eid.Camel
         attrs.placeholder = column.placeholder.replace('\\n', '\n')
-        //if (!this.#isTextareaOrContenteditable(column.type, attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value }
-        //if (!this.#isContenteditable(attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value }
-        if (!this.#isContenteditable(attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value.replace('\\n', '\n') }
-        if (datalist && ['hidden','password','check','checkbox','radio','button','submit','reset','image'].some(v=>v!==column.type)) { attrs.list = `${attrs.id}-list` }
+        if (!this.#isTextareaOrContenteditable(column.type, attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = value }
+        if (datalist && ['hidden','password','check','checkbox','radio','button','submit','reset','image'].some(v=>v!==type)) { attrs.list = `${attrs.id}-list` }
         const [tagName, att] = this.#elOp(column.type)
         return {tagName:tagName, attrs:{...att, ...attrs}, datalist:datalist}
     }
-    static #elOp(type) {
+    #elOp(type) {
         let el = this.#makeNameIsType(type); if (el) { return el };
         el = this.#makeButton(type); if (el) { return el };
         switch (type) {
@@ -49,17 +45,16 @@ class TsvParser {
             default: return [type, {}]
         }
     }
-    static #makeNameIsType(type) {
+    #makeNameIsType(type) {
         if (['text','checkbox','radio','color','date','datetime-local','email','file','hidden','month','number','password','range','search','tel','text','time','url','week'].some(v=>v===type)) { return ['input', {type:type}] }
         return null
     }
-    static #makeButton(type) { return ((['button','submit','reset'].some(v=>v===type)) ? ['button', {type:type}] : null) }
-    static #isTextareaOrContenteditable(type, attrs) {
+    #makeButton(type) { return ((['button','submit','reset'].some(v=>v===type)) ? ['button', {type:type}] : null) }
+    #isTextareaOrContenteditable(type, attrs) {
         if (['area','textarea'].some(v=>v===type)) { return true }
         else if (attrs.hasOwnProperty('contenteditable')) { return attrs.contenteditable }
         return false
     }
-    static #isContenteditable(attrs) { return ((attrs.hasOwnProperty('contenteditable')) ? attrs.contenteditable : false )}
 }
 class Tag { // [{name:, attrs:{}, inners:[]},...]    Usage: van.tags[name](attrs, inners)
     /*
@@ -78,32 +73,29 @@ class Tag { // [{name:, attrs:{}, inners:[]},...]    Usage: van.tags[name](attrs
     }
     */
     // [el:van.tags[tagName](attrs, inners), dl:van.tags.datalist(), lb:van.tags.label()]
-    static make(col, obj) { // make(Tsv.fromStr('')[0], TsvParser.fromColumn(Tsv.fromStr('')[0]))
+    make(col, obj) { // make(Tsv.fromStr('')[0], TsvParser.fromColumn(Tsv.fromStr('')[0]))
         return {
             el: this.#makeEl(col, obj),
             dl: this.#makeDl(col.type, obj.attrs.list, obj.datalist),
-            lb: this.#makeLb(col.type, obj.attrs.id, col.label)
+            lb: this.#makeLb(col.type, attrs.id, col.label)
     }}
-    static #makeEl(col, obj) { // make(Tsv.fromStr('')[0], TsvParser.fromColumn(Tsv.fromStr('')[0]))
-        if ('radio'===col.type) { return this.#makeRadios(obj.attrs, obj.datalist) }
-        else if (['check','checkbox'].some(v=>v===col.type)) { return this.#makeCheckbox(obj.attrs, col.label) }
-        else if (['number','range'].some(v=>v===col.type)) { return this.#makeNumberOrRange(obj.attrs.value, obj.attrs) }
-        console.log(obj, obj.attrs, obj.attrs.value)
-        return van.tags[obj.tagName](obj.attrs, 
-            ((Type.isStr(obj.attrs.value)) ? obj.attrs.value.replace('\\n', '\n') : null), 
-            this.#makeSelectOptions(obj.tagName, obj.attrs.value, obj.datalist))
+    #makeEl(col, obj) { // make(Tsv.fromStr('')[0], TsvParser.fromColumn(Tsv.fromStr('')[0]))
+        if ('radio'===type) { return this.#makeRadios(obj.attrs, obj.datalist) }
+        else if (['check','checkbox'].some(v=>v===type)) { return this.#makeCheckbox(obj.attrs, col.label) }
+        else if (['number','range'].some(v=>v===type)) { return this.#makeNumberOrRange(obj.attrs.value, obj.attrs) }
+        return van.tags[el](attrs, innerText.replace('\\n', '\n'), this.#makeSelectOptions(obj.tagName, obj.attrs.value, obj.datalist))
     }
-    static #makeRadios(attrs, datalist) {
+    #makeRadios(attrs, datalist) {
         console.log('#makeRadios(attrs, datalist):', attrs, datalist)
         const valueLabelObj = JSON.parse(attrs.value)
         return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{attrs.value=k;return van.tags.label(van.tags.input(attrs), v);})
     }
-    static #makeCheckbox(attrs, label) {
+    #makeCheckbox(attrs, label) {
         attrs.checked = ['true','1','checked'].some(v=>v===attrs.value)
         attrs.value = null
         return van.tags.label(van.tags.input(attrs), label)
     }
-    static #makeNumberOrRange(value, attrs) {
+    #makeNumberOrRange(value, attrs) {
         const v = value.split(',') // value,min,max,step
         attrs.value = Number(v[0])
         if (1 < v.length) { attrs.min = Number(v[1]) }
@@ -116,24 +108,24 @@ class Tag { // [{name:, attrs:{}, inners:[]},...]    Usage: van.tags[name](attrs
         return van.tags.input(attrs)
     }
     //#makeDatalist(type, id, values) {
-    static #makeDl(type, id, values) {
+    #makeDl(type, id, values) {
         console.warn('#makeDatalist()', id, type, values)
         if (!values) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }
         if (!Type.isArray(values)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`); return null }
         if (!['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===type)) { console.warn(`datalist作成失敗。非対応要素${type}のため。`); return null; }
         return van.tags.datalist({id:id}, values.map(v=>van.tags.option({value:v})))
     }
-    static #makeSelectOptions(tagName, value, valueLabelObj) {
+    #makeSelectOptions(tagName, value, valueLabelObj) {
         console.log('#makeSelectOptions')
         if ('select'!==tagName) { return null }
         console.log(valueLabelObj)
         return this.#makeOptions(valueLabelObj, value)
     }
-    static #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
+    #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
     //#makeOptions(valueLabelObj, value) { return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
-    static #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
+    #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     //#makeLabel(type, id, text) { return van.tags.label(((['radio','check','checkbox'].some(v=>v===type)) ? ({}) : ({for:id})), text) }
-    static #makeLb(type, id, text) { return van.tags.label(((['radio','check','checkbox'].some(v=>v===type)) ? ({}) : ({for:id})), text) }
+    #makeLb(type, id, text) { return van.tags.label(((['radio','check','checkbox'].some(v=>v===type)) ? ({}) : ({for:id})), text) }
     /*
     #getTagName(column) {
 
@@ -169,8 +161,8 @@ class Tag { // [{name:, attrs:{}, inners:[]},...]    Usage: van.tags[name](attrs
     // 画面のHTML要素を生成する
     SceneMap.make('sid')
 
-    new SceneMakeHelper(SceneMap)
-    SceneMakeHelper.setMake(sid, fn) { map.set(sid, fn); }
+    new SceneMaker(SceneMap)
+    SceneMaker.setMake(sid, fn) { map.set(sid, fn); }
     fn(sid, uiMap) {
         const els = []
         for (let [eid, v] of uiMap) {
@@ -182,17 +174,16 @@ class Tag { // [{name:, attrs:{}, inners:[]},...]    Usage: van.tags[name](attrs
     }
 */
 class SceneMap {
-    constructor() { this._map = new Map(); }
-    init(tsv, isHeaderTrim) {
-        this._map.clear()
-        const columns = Tsv.fromStr(tsv, isHeaderTrim)
+    constructor() {
+        this._map = new Map()
+    }
+    init(tsv) {
+        const columns = Tsv.fromStr(tsv)
         for (let col of columns) {
-            const obj = TsvParser.fromColumn(col)
+            const obj = TsvParser.fromColumn(column)
             if (!this._map.has(col.sid)) { this._map.set(col.sid, {uiMap:new Map(), make:null}) }
             const scene = this._map.get(col.sid)
-            const uiMap = scene.uiMap
-            //if (!scene.uiMap.has(col.eid)) { scene.uiMap.set(col.eid, {col:col, obj:obj}) }
-            if (!scene.uiMap.has(col.eid)) { scene.uiMap.set(col.eid, {col:col, obj:obj}) }
+            if (!scene.has(col.eid)) { scene.set(col.eid, {col:col, obj:obj}) }
         }
     }
     get(sid, eid) {
@@ -200,16 +191,9 @@ class SceneMap {
         else if (sid) { return this._map.get(sid) }
         return this._map
     }
-    has(sid, eid) {
-        if (sid && eid) { return (this._map.has(sid) && this._map.get(sid).uiMap.has(eid)) }
-        else if (sid) { return this._map.has(sid) }
-        return false
-    }
-    //setAttr(sid, eid, key, value) { this.get(sid, eid).obj.attrs[key] = value }
-    setAttr(sid, eid, key, value) { if (this.has(sid, eid)) { this.get(sid, eid).obj.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
+    setAttr(sid, eid, key, value) { this.get(sid, eid).obj.attrs[key] = value }
     margeAttrs(sid, eid, attrs) { this.get(sid, eid).obj.attrs[key] = ({...this.get(sid, eid).obj.attrs[key], ...attrs}) }
     setMake(sid, fn) { this.get(sid).make = fn }
-    makeAll() { return Array.from(this._map.keys()).map(sid=>this.make(sid)) }
     make(sid) {
         const s = this.get(sid)
         const m = s.make
@@ -217,7 +201,7 @@ class SceneMap {
         return this.#makeTable(s.uiMap, sid)
     }
     #makeTable(uiMap, sid) {
-        const table = SceneMakeHelper.table(uiMap, sid)
+        const table = SceneMaker.table(uiMap, sid)
         table.id = sid
         return table
     }
@@ -233,79 +217,17 @@ class SceneMap {
     }
     */
 }
-class SceneMakeHelper {
+class SceneMaker {
     static table(uiMap, sid) {
         return van.tags.table({id:sid},
             van.tags.caption(sid),
-            Array.from(uiMap.entries()).map(([eid, v])=>{
+            uiMap.entries().map(([eid, v])=>{
                 const dom=Tag.make(v.col, v.obj)
                 return van.tags.tr(van.tags.th(v.col.label), van.tags.td(dom.el, dom.dl))
             })
         )
     }
 }
-class SceneTransitioner {
-    constructor(sceneMap) {
-        //this._map = sceneMap.get()
-        this._map = sceneMap
-        this._now = null
-        this._mode = {dir:0, loopMethod:0}
-        this._seq = new MapSequence(this._map.get(), 0)
-        console.log(this._map)
-        //this._seq = new Sequence(Array.from(this._map.keys()))
-    }
-    init(sid) { this.#addAll(sid) }
-    #addAll(sid) {
-        //console.log(sid, this._meta, this._meta.get(sid))
-        van.add(document.body, this._map.makeAll())
-        //van.add(document.body, Array.from(this._map).map(([k,v])=>{console.log(k,v);return this._meta.get(k).make(v, k)}))
-        this.#hideAll()
-        this.select(sid)
-    }
-    select(sid) {
-        //if (!this._map.has(sid)) { sid = this._map.entries().next().value[0] } // sidが未指定なら最初の画面を選択する
-        if (!this._map.get().has(sid)) { sid = this._map.get().entries().next().value[0] } // sidが未指定なら最初の画面を選択する
-        console.log(`select(): sid=${sid}`)
-        this._now = sid
-        //this._seq.value = sid
-        this._seq.key = sid
-        this.#hideAll()
-        this.#show(sid)
-    }
-    move() {
-        //const [i, k] = this._seq.next()
-        const [i, k, v] = this._seq.next()
-        this.select(k)
-    }
-    first() { this.select(this._seq.first()[1]) }
-    last() { this.select(this._seq.last()[1]) }
-    #hideAll() { for (let [sid,v] of this._map.get()) { this.#hide(sid) } }
-    #hide(sid) { this.#setDisp(sid, false) }
-    #show(sid) { this.#setDisp(sid, true) }
-    #setDisp(sid, isShow) { const el=document.querySelector(`#${sid}`); if (el) {el.style.setProperty('display', ((isShow) ? 'block' : 'none'))} }
-}
-class Scenes {
-    constructor(scenes, makeObj) {
-        this._scenes = scenes
-        this._meta = new Map()
-        this._selected = null
-        this._move = {dir:0, loopMethod:0} // dir:(0,正数:asc, 負数:desc), loopMethod(0:headTail, 1:yoyo, 2:stop)
-        //this._seq = new Sequence(Array.from(this._scenes.keys()), 0)
-        this._seq = new MapSequence(this._scenes, 0)
-        console.log(this._scenes)
-        //this.#setupMeta()
-        if (makeObj) { for (let [sid, fn] of Object.entries(makeObj)) { this.setMake(sid, fn) } }
-    }
-    get tsv() { return this._gen }
-    get gen() { return this._gen }
-    get seq() { return this._gen }
-    get val() { return this._gen }
-}
-
-window.SceneMap = SceneMap
-window.SceneMakeHelper = SceneMakeHelper
-window.SceneTransitioner = SceneTransitioner
-/*
 class UiEl {
     async loadTsv(url) {
         const res = await fetch(url)
@@ -436,6 +358,62 @@ class UiEl {
     //#makeOptions(valueLabelObj, value) { return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     #makeLabel(type, id, text) { return van.tags.label(((['radio','check','checkbox'].some(v=>v===type)) ? ({}) : ({for:id})), text) }
+    /*
+    makeTables(scenes) { return Array.from(scenes).map(([k,v])=>this.makeTable(v, k)) }
+    makeTable(scene, k) {
+        const trs = []
+        for (let [k,v] of scene) {
+            trs.push(van.tags.tr(van.tags.th(v.label), van.tags.td(v.el, v.dl)))
+        }
+        return van.tags.table(((k) ? van.tags.caption(k) : null), trs)
+    }
+    */
+}
+class Generator {
+    constructor() { this._uiel = new UiEl(); this._scenes = null; }
+    get scenes() { return this._scenes }
+    fromTsv(text, isHeaderTrim) { this._scenes = this._uiel.fromTsv(text, isHeaderTrim); }
+    get(sid, eid) {
+        if (sid && eid) { return this._scenes.get(sid).uiMap.get(eid) }
+        else if (sid) { return this._scenes.get(sid) }
+        return this._scenes
+    }
+    setMake(sid, fn) { this._scenes.get(sid).make = fn } // fn(sid, uiMap: new Map([['eid-0', {tag:{name:'', attrs:{}, inners:[]}, dom:{el:null, dl:null, lb:null}, validates:[{msg:'', rules:'', isValid:()=>{}}]}]]))
+    addBody() {
+        this.removeBody()
+        //van.add(document.body, Array.from(this._scenes).map(([k,v])=>{console.log(k,v);return this.#make(k, v)}))
+        van.add(document.body, Array.from(this._scenes).map(([k,v])=>{console.log(k,v);return this.#make(k, v)}))
+    }
+    //removeBody() { for (let [sid, v] of this._scenes) { document.querySelector(`#{sid}`)?.remove() } }
+    removeBody() { for (let [sid, v] of this._scenes) { const el=document.querySelector(`#${sid}`); if(el){el.remove()} } }
+    #make(sid, v) {
+        //if (Type.isFunction(this._scenes.get(k).make)) { return this._scenes.get(k).make(sid, v.uiMap) }
+        //if (Type.isFunction(this._scenes.get(k).make)) {
+            //const el = this._scenes.get(k).make(sid, v.uiMap)
+        if (Type.isFunction(v.make)) {
+            const el = v.make(sid, v.uiMap)
+            if (Type.isEls(el)) { return van.tags.div({id:sid}, ...el) }
+            else if (Type.isEl(el)) { if (el.id!==sid) { el.id = sid }; return el; }
+            console.warn(`画面生成make()に失敗しました。任意関数が指定されていたものの、返された値の型はHTML要素型またはその配列ではありませんでした。型不正のため画面生成に失敗したのでnullを返します。sid:${sid}`)
+            return null
+        }
+        return this.#makeTable(sid, v.uiMap)
+        //return this._uiel.makeTable(v.uiMap, k)
+
+    }
+    #makeTable(sid, uiMap) { return van.tags.table({id:sid}, van.tags.caption(sid), Array.from(uiMap).map(([k,v])=>van.tags.tr(van.tags.th(v.dom.lb), van.tags.td(v.dom.el, v.dom.dl)))) }
+    #makeTable(sid, uiMap) {
+        
+        return van.tags.table({id:sid}, van.tags.caption(sid), Array.from(uiMap).map(([k,v])=>van.tags.tr(van.tags.th(v.dom.lb), van.tags.td(v.dom.el, v.dom.dl)))) }
+    /*
+    #makeTable(sid, uiMap) {
+        const trs = []
+        for (let [k,v] of uiMap) {
+            trs.push(van.tags.tr(van.tags.th(v.label), van.tags.td(v.el, v.dl)))
+        }
+        return van.tags.table({id:k}, van.tags.caption(k), trs)
+    }
+    */
 }
 class Scenes {
     constructor() {
@@ -450,7 +428,6 @@ class Scenes {
     get val() { return this._val }
 }
 window.Scenes = Scenes;
-*/
 /*
 class Scenes {
     constructor(scenes, makeObj) {
