@@ -83,9 +83,11 @@ class Tag { // {el:, dl:, lb: }
     static #makeRadios(attrs, datalist) {
         console.log('#makeRadios(attrs, datalist):', attrs, datalist)
         const valueLabelObj = JSON.parse(attrs.value)
-        
+        console.log(valueLabelObj, Array.from(Object.entries(valueLabelObj)))
         //return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{attrs.value=k;return van.tags.label(van.tags.input(attrs), v);})
-        return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{attrs.value=k;attrs.id+='-'+attrs.value.Chain;return van.tags.label(van.tags.input(attrs), v);})
+        //return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{attrs.value=k;attrs.id+='-'+attrs.value.Chain;return van.tags.label(van.tags.input(attrs), v);})
+        // attrsを共用する。複数のラジオボタンで。けどそれは困るのでディープコピーした。
+        return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;return van.tags.label(van.tags.input(att), v);})
     }
     static #makeCheckbox(attrs, label) {
         attrs.checked = ['true','1','checked'].some(v=>v===attrs.value)
@@ -217,14 +219,56 @@ class SceneStore {
         return json
     }
     #jsonScene(sid) { return this.#evs(sid, this._map.get(sid).uiMap) }
-    #evs(sid, uiMap) { return this.#pickBy(Object.assign(Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)})))) }
+    #evs(sid, uiMap) { return this.#pickBy(Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)})))) }
+    //#evs(sid, uiMap) { return Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)}))) }
+    //#evs(sid, uiMap) { return Object.assign(Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)}))) }
+    //#evs(sid, uiMap) { return this.#pickBy(Object.assign(Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)})))) }
     //#evs(sid, uiMap) { return Object.assign(Array.from(uiMap.entries()).map(([eid,e])=>({eid:document.querySelector(`#${sid}-${eid}`).value}))) }
     #value(sid, eid, tagName, attrs) {
-        const el = document.querySelector(`#${sid}-${eid}`)
-        console.log(`#${sid}-${eid}`, el)
+        if ('input'===tagName && 'radio'===attrs.type) {
+            const checkedRadios = Array.from(document.querySelectorAll(`input[type="radio"][id^="${sid}-${eid}-"]`)).filter(radio=>radio.checked)
+            return ((0===checkedRadios.length) ? null : checkedRadios[0].value)
+        }
+//        if ('input'===tagName && 'checkbox'===attrs.type) { return el.checked }
+//        const q = (('input'===tagName && 'radio'===attrs.type) ? `input[type="radio"][id^="${sid}-${eid}-"][checked]` : `#${sid}-${eid}`)
+//        const el = document.querySelector(q)
+//        console.log(q, el)
+        //const id = `#${sid}-${eid}`
+        const id = `#${sid.Chain}-${eid.Chain}`
+        const el = document.querySelector(id)
+        const attNm = this.#getValueAttrName(tagName, attrs)
+        console.log(id, el, attNm, ((attNm) ? el[attNm] : ''))
+        if (attNm) { return ((['number','range'].some(v=>v===attrs.type)) ? Number(el[attNm]) : el[attNm]) }
+        //if (attNm) { return el[attNm] }
+        return undefined
+        /*
         if (['textarea','select','input'].some(v=>v===tagName)) { return el.value }
         else if (attrs.hasOwnProperty('contenteditable')) { return el.innerHTML }
         else { return undefined }
+        */
+        /*
+        if ('input'===tagName && 'radio'===attrs.type) {
+            const el = document.querySelector(`input[type="radio"][id^="${sid}-${eid}-"][checked]`)
+        }
+//        const el = document.querySelector(`#${sid}-${eid}`)
+//        const id = `#${sid}-${eid}${(('input'===tagName && ['radio','checkbox'].some(v=>v===attrs.type)) ? '-'+attrs.value.Chain : '')}`
+        const el = document.querySelector(id)
+        console.log(id, el)
+        //console.log(`#${sid}-${eid}`, el)
+        //if (['textarea','select','input'].some(v=>v===tagName)) { return el.value }
+        //if (['textarea','select','input'].some(v=>v===tagName)) { return ((['radio','checkbox'].some(v=>v===attrs.type)) ? el.checked : el.value) }
+        if (['textarea','select'].some(v=>v===tagName)) { return el.value }
+        else if ('input'===tagName) { return ((['radio','checkbox'].some(v=>v===attrs.type)) ? el.checked : el.value) }
+        else if (attrs.hasOwnProperty('contenteditable')) { return el.innerHTML }
+        else { return undefined }
+        */
+    }
+    #getValueAttrName(tagName, attrs) {
+        //if ('input'===tagName && 'checkbox'===attrs.type) { return 'checked' }
+        if ('input'===tagName && 'checkbox'===attrs.type) { console.log(attrs.type, 'checked!!!!!'); return 'checked' }
+        if (['textarea','select','input'].some(v=>v===tagName)) { return 'value' }
+        else if (attrs.hasOwnProperty('contenteditable')) { return 'innerHTML' }
+        return null
     }
     #pickBy(obj) { return Object.assign(...Array.from(Object.entries(obj)).filter(([k,v])=>(undefined!==v)).map(([k,v])=>({[k]:v})))}
     /*

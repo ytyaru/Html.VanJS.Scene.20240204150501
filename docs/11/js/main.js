@@ -65,7 +65,7 @@ layout	sex	radio	性別		{"male":"男", "female":"女"}
 layout	isMan	check	人間か		true		
 layout	editor	div	エディタ				{"tabindex":0, "contenteditable":true}
 layout	viewer	div	ビューア				{"tabindex":0}
-layout	save	button			保存		
+layout	save	button			JSONファイルダウンロード		
 `
     const scene = new Scene()
     scene.init(tsv, true)
@@ -84,7 +84,8 @@ layout	save	button			保存
     const layoutViewerHtmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
     scene.Map.setAttr('layout', 'description', 'oninput', (e)=>layoutViewerHtmls.val=e.target.value)
     scene.Map.setInners('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
-    scene.Map.setAttr('layout', 'save', 'onclick', (e)=>{console.log(scene, scene.Store);console.log(scene.Store.json());})
+    //scene.Map.setAttr('layout', 'save', 'onclick', (e)=>{const j=scene.Store.json();console.log(j);File.download(j)})
+    scene.Map.setAttr('layout', 'save', 'onclick', (e)=>{const j=scene.Store.json();console.log(j);JsonFile.download(j, 'scenes.json')})
     scene.Map.setMake('layout', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),
