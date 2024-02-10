@@ -31,6 +31,9 @@ class TsvParser {
         if (!this.#isContenteditable(attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value.replace('\\n', '\n') }
         //if (!this.#isContenteditable(attrs) && !['file'].some(v=>v===column.type)) { attrs.value = column.value.replace('\\n', '\n') }
         if (datalist && ['hidden','password','check','checkbox','radio','button','submit','reset','image'].some(v=>v!==column.type)) { attrs.list = `${attrs.id}-list` }
+        console.log(attrs.dataset)
+        attrs['data-sid'] = column.sid.Chain
+        attrs['data-eid'] = column.eid.Chain
         const [tagName, att] = this.#elOp(column.type)
         return {tagName:tagName, attrs:{...att, ...attrs}, datalist:datalist, inners:null}
     }
@@ -253,6 +256,10 @@ class EV2Obj { // 要素の値をオブジェクトに変換する
         return json
     }
     static #jsonScene(sid) { return this.#evs(sid, this._map.get(sid).uiMap) }
+    static #evs(sid, uiMap) { return this.#pickBy(Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>{console.log(sid,eid);return ({[eid]:document.querySelector(`[data-sid="${sid.Chain}"][data-eid="${eid.Chain}"]`).jsonValue})}))) }
+    //static #evs(sid, uiMap) { return this.#pickBy(Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:document.querySelector(`[data-sid="${sid}"][data-eid="${eid}"]`).jsonValue})))) }
+    static #pickBy(obj) { return Object.assign(...Array.from(Object.entries(obj)).filter(([k,v])=>(undefined!==v)).map(([k,v])=>({[k]:v})))}
+    /*
     static #evs(sid, uiMap) { return this.#pickBy(Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>({[eid]:this.#value(sid,eid,e.obj.tagName, e.obj.attrs)})))) }
     static #value(sid, eid, tagName, attrs) {
         if ('input'===tagName && 'radio'===attrs.type) {
@@ -272,11 +279,10 @@ class EV2Obj { // 要素の値をオブジェクトに変換する
         else if (attrs.hasOwnProperty('contenteditable')) { return 'innerHTML' }
         return null
     }
-    static #pickBy(obj) { return Object.assign(...Array.from(Object.entries(obj)).filter(([k,v])=>(undefined!==v)).map(([k,v])=>({[k]:v})))}
+    */
 }
 
-
-/*
+//document.querySelector(`[data-sid="${sid}"][data-eid="${eid}"]`).jsonValue
 class Obj2EV { // オブジェクトを要素の値に設定する
     set(obj) {
         for (let [sid, s] of Object.entries(obj)) {
@@ -286,7 +292,8 @@ class Obj2EV { // オブジェクトを要素の値に設定する
         }
     }
     #setEV(sid, eid, value) {
-
+        const el = document.querySelector(`[data-sid="${sid}"][data-eid="${eid}"]`)
+        return el.jsonValue
     }
     #getE(sid, eid, value) {
         let el = document.querySelector(`#${sid.Chain}-${eid.Chain}`)
@@ -304,12 +311,14 @@ class Obj2EV { // オブジェクトを要素の値に設定する
         if (contenteditable) { return true }
         return false
     }
+    /*
     #isTarget(tagName, type) { // 値のセット対象か（入力要素でない、input fileである、value属性を持っていない等）
         if (['textarea','select'].some(v=>v===tagName)) { return true }
         if ('input'===tagName && ['file','button','submit','reset','image'].some(v=>v!==type)) { return true }
         if ('button'===tagName) { return false }
         if ()
     }
+    */
 }
 //Object.defineProperty(obj, key, {enumerable:false,configurable: false,writable: false,value: "static",})
 Object.defineProperty(HTMLElement.prototype, 'isUserInput', { get: function() { // ユーザ入力要素であるか否か
@@ -322,14 +331,56 @@ Object.defineProperty(HTMLElement.prototype, 'isUserInput', { get: function() { 
 //Object.defineProperty(HTMLElement.prototype, 'hasSettableValue', { get: function() { // セット可能な値を持っている要素か否か
 Object.defineProperty(HTMLElement.prototype, 'hasUserInputableValue', { get: function() { // ユーザ入力可能な値を持っている要素か否か
     const tagName = this.tagName.toLowerCase()
-    const type = this.getAttribute('type').toLowerCase()
     const contenteditable = this.hasAttribute('contenteditable')
     if (['textarea','select'].some(v=>v===tagName)) { return true }
-    if ('input'===tagName && ['file','button','submit','reset','image'].some(v=>v!==type)) { return true }
+    if ('input'===tagName) {
+        const t = this.getAttribute('type')
+        const type = (t) ? t.toLowerCase() : 'text'
+        if ('input'===tagName && ['file','button','submit','reset','image'].some(v=>v!==type)) { return true }
+    }
     if ('button'===tagName) { return false }
     if (contenteditable) { return true }
     return false
 }})
+Object.defineProperty(HTMLElement.prototype, 'jsonValue', {
+    get: function() { // valueを適切な型に変換して返す
+        if (!this.hasUserInputableValue) { return undefined }
+        const tagName = this.tagName.toLowerCase()
+        if (['textarea','select'].some(v=>v===tagName)) { return this.value }
+        if ('input'===tagName) {
+            const type = this.getAttribute('type').toLowerCase()
+            if ('checkbox'===type) { return this.checked }
+            if (['number','range'].some(v=>v===type)) { return Number(this.value) }
+            if ('radio'===type) {
+                const sameGroupRadios = document.querySelectorAll(`input[type="radio"][data-sid="${this.dataset.sid}"][data-eid="${this.dataset.eid}"]`)
+                console.debug('sameGroupRadios:', sameGroupRadios)
+                if (!sameGroupRadios) { return null }
+                const checkedRadios = Array.from(sameGroupRadios).filter(radio=>radio.checked)
+                console.debug('checkedRadios:', checkedRadios)
+                return ((0===checkedRadios.length) ? null : checkedRadios[0].value)
+            }
+            return this.value
+        }
+        const contenteditable = this.hasAttribute('contenteditable')
+        if (contenteditable) { return this.innerHTML }
+        return undefined
+    },
+    set: function(v) {
+        if (!this.hasUserInputableValue) { return }
+        const tagName = this.tagName.toLowerCase()
+        if ('input'===tagName) {
+            const type = this.getAttribute('type').toLowerCase()
+            if ('file'===type) { return } // value に値をセットするとエラーになる（非対応）
+            if ('checkbox'===type) { this.checked = v }
+            if (['number','range'].some(v=>v===type)) { this.value = v }
+            if ('radio'===type) {
+                const radio = document.querySelector(`input[type="radio"][data-sid="${this.dataset.sid}"][data-eid="${this.dataset.eid}"][value="${v}"]`)
+                if (radio) { radio.checked = true }
+            }
+        }
+    },
+})
+/*
 Object.defineProperty(HTMLElement.prototype, 'jsonValue', { get: function() { // valueを適切な型に変換して返す
     if (!this.hasUserInputableValue) { return undefined }
     const tagName = this.tagName.toLowerCase()
@@ -339,10 +390,11 @@ Object.defineProperty(HTMLElement.prototype, 'jsonValue', { get: function() { //
         if ('checkbox'===type) { return this.checked }
         if (['number','range'].some(v=>v!==type)) { return Number(this.value) }
         if ('radio'===type) {
-            // data-sid="", data-eid=""
             const sameGroupRadios = document.querySelectorAll(`input[type="radio"][data-sid="${this.dataset.sid}"][data-eid="${this.dataset.eid}"]`)
+            console.debug('sameGroupRadios:', sameGroupRadios)
             if (!sameGroupRadios) { return null }
             const checkedRadios = Array.from(sameGroupRadios).filter(radio=>radio.checked)
+            console.debug('checkedRadios:', checkedRadios)
             return ((0===checkedRadios.length) ? null : checkedRadios[0].value)
         }
         return this.value
@@ -350,13 +402,8 @@ Object.defineProperty(HTMLElement.prototype, 'jsonValue', { get: function() { //
     const contenteditable = this.hasAttribute('contenteditable')
     if (contenteditable) { return innerHTML }
 }})
-
-HTMLElement.prototype.isUserInput = function() {
-
-}
-class El {
-    is
-}
+*/
+/*
 class Tag {
     static isRadio(tagName, type) { return ('input'===tagName && 'radio'===type) }
     static isFile(tagName, type) { return ('input'===tagName && 'file'===type) }
