@@ -60,7 +60,7 @@ dl-ex	save	button			JSONファイルダウンロード
     `}
 }
 class TsvParser {
-    static fromTsv(tsv) { // [{tagName:, attrs:{}, detalist:{}, inners:null},...]
+    static fromTsv(tsv) { // [{tagName:, attrs:{}, detalist:{}, children:null},...]
         return tsv.map(column=>this.fromColumn(column))
     }
     static fromColumn(column) {
@@ -77,7 +77,7 @@ class TsvParser {
         attrs['data-sid'] = column.sid.Chain
         attrs['data-eid'] = column.eid.Chain
         const [tagName, att] = this.#elOp(column.type)
-        return {tagName:tagName, attrs:{...att, ...attrs}, datalist:datalist, inners:null}
+        return {tagName:tagName, attrs:{...att, ...attrs}, datalist:datalist, children:null}
     }
     static #elOp(type) {
         let el = this.#makeNameIsType(type); if (el) { return el };
@@ -120,7 +120,7 @@ class Tag { // {el:, dl:, lb: }
         return van.tags[obj.tagName](obj.attrs, 
             ((Type.isStr(obj.attrs.value)) ? obj.attrs.value.replace('\\n', '\n') : null), 
             this.#makeSelectOptions(obj.tagName, col.value, obj.datalist),
-            ((obj.inners) ? obj.inners : null))
+            ((obj.children) ? obj.children : null))
     }
     static #makeRadios(attrs, datalist) {
         console.log('#makeRadios(attrs, datalist):', attrs, datalist)
@@ -187,7 +187,7 @@ class SceneMap {
         return false
     }
     setAttr(sid, eid, key, value) { if (this.has(sid, eid)) { this.get(sid, eid).obj.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
-    setInners(sid, eid, value) { if (this.has(sid, eid)) { this.get(sid, eid).obj.inners = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
+    setChildren(sid, eid, value) { if (this.has(sid, eid)) { this.get(sid, eid).obj.children = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
     margeAttrs(sid, eid, attrs) { this.get(sid, eid).obj.attrs[key] = ({...this.get(sid, eid).obj.attrs[key], ...attrs}) }
     setMake(sid, fn) { this.get(sid).make = fn }
     makeAll() { return Array.from(this._map.keys()).map(sid=>this.make(sid)) }

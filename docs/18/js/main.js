@@ -67,6 +67,8 @@ layout	editor	div	エディタ				{"tabindex":0, "contenteditable":true}
 layout	viewer	div	ビューア				{"tabindex":0}
 layout	save	button			JSONファイルダウンロード		
 layout	load	button			JSONファイル読込		
+layout	category	select	カテゴリ(option無し)				
+layout	multi-children	div	複数children				
 `
     const scene = new Scene()
     console.log('TSV例 開始-----------------------------')
@@ -85,9 +87,9 @@ layout	load	button			JSONファイル読込
     scene.init(tsv)
     scene.Map.setAttr('dl-ex', 'viewer', 'style', ()=>`width:100px;height:100px;`)
     const htmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
-    scene.Map.setInners('dl-ex', 'viewer', htmls.val)
+    scene.Map.setChildren('dl-ex', 'viewer', htmls.val)
     scene.Map.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
-    scene.Map.setInners('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
+    scene.Map.setChildren('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
     scene.Map.setMake('third', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),
@@ -97,7 +99,7 @@ layout	load	button			JSONファイル読込
     scene.Map.setAttr('layout', 'viewer', 'style', ()=>`width:100px;height:100px;`)
     const layoutViewerHtmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
     scene.Map.setAttr('layout', 'description', 'oninput', (e)=>layoutViewerHtmls.val=e.target.value)
-    scene.Map.setInners('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
+    scene.Map.setChildren('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
     scene.Map.setAttr('layout', 'save', 'onclick', (e)=>{const j=scene.Store.get();console.log(j);JsonFile.download(j, 'scenes.json')})
     scene.Map.setAttr('layout', 'load', 'onclick', (e)=>{
         const j=scene.Store.get();
@@ -116,6 +118,7 @@ layout	load	button			JSONファイル読込
 //    scene.Map.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>kvTable.make()))
     console.log(KvTable)
     scene.Map.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>KvTable.make(uiMap, sid)))
+    scene.Map.setChildren('layout', 'multi-children', [van.tags.h1('複数'),van.tags.p('子要素')])
     window.addEventListener('resize', debounce(()=>KvTable.resize(), 300))
     /*
     window.addEventListener('resize', (event)=>{
