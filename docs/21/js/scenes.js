@@ -1,18 +1,15 @@
 (function(){
 class Tsv {
     static COL_SZ = 8
-    //static fromStr(tsv, isHeaderTrim) { // [{sid,eid,type,label,placeholder,value,datalist,attrs},...]
     static fromStr(tsv, hasNotHeader) { // [{sid,eid,type,label,placeholder,value,datalist,attrs},...]
         tsv = tsv.trimLine()
-//        tsv = ((isHeaderTrim) ? this.#removeHeader(tsv) : tsv)
         tsv = ((hasNotHeader) ? tsv : this.#removeHeader(tsv))
         console.log(tsv)
         return this.#lines(tsv).map(line=>this.#objects(this.#columns(line)))
     }
     static #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
     static #lines(text) { return text.split(/\r?\n/) }
-    //static #columns(line, delimiter='\t') { return line.split(delimiter) }
-    static #columns(line, delimiter='\t') { console.log(line, line.split(delimiter));return line.split(delimiter) }
+    static #columns(line, delimiter='\t') { return line.split(delimiter) }
     static #objects(columns) {
         // 不足列を空値で補う
         //if (columns.length < Tsv.COL_SZ) { [...Array(Tsv.COL_SZ - columns.length)].map(()=>columns.push('')) }
@@ -69,9 +66,7 @@ class TsvParser {
         const datalist = ((column.datalist) ? JSON.parse(column.datalist) : null)
         attrs.id = `${column.sid.Chain}-${column.eid.Chain}`
         attrs.name = column.eid.Camel
-        //attrs.placeholder = column.placeholder.replace('\\n', '\n')
         attrs.placeholder = column.placeholder.replace(/\\n/g, '\n')
-        //if (!this.#isContenteditable(attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value.replace('\\n', '\n') }
         if (!this.#isContenteditable(attrs) && !['select','file'].some(v=>v===column.type)) { attrs.value = column.value.replace(/\\n/g, '\n') }
         if (datalist && ['hidden','password','check','checkbox','radio','button','submit','reset','image'].some(v=>v!==column.type)) { attrs.list = `${attrs.id}-list` }
         console.log(attrs.dataset)
@@ -115,11 +110,9 @@ class Tag { // {el:, dl:, lb: }
     static #makeEl(col, obj) { // make(Tsv.fromStr('')[0], TsvParser.fromColumn(Tsv.fromStr('')[0]))
         if ('radio'===col.type) { return this.#makeRadios(obj.attrs, obj.datalist) }
         else if (['check','checkbox'].some(v=>v===col.type)) { return this.#makeCheckbox(obj.attrs, col.label) }
-        //else if (['number','range'].some(v=>v===col.type)) { return this.#makeNumberOrRange(obj.attrs.value, obj.attrs) }
         else if (['number','range'].some(v=>v===col.type)) { return this.#makeNumberOrRange(col.value, obj.attrs) }
         console.log(obj, obj.attrs, obj.attrs.value)
         return van.tags[obj.tagName](obj.attrs, 
-            //((Type.isStr(obj.attrs.value)) ? obj.attrs.value.replace('\\n', '\n') : null), 
             ((Type.isStr(obj.attrs.value)) ? obj.attrs.value.replace(/\\n/g, '\n') : null), 
             this.#makeSelectOptions(obj.tagName, col.value, obj.datalist),
             ((obj.children) ? obj.children : null))
@@ -159,16 +152,13 @@ class Tag { // {el:, dl:, lb: }
         return this.#makeOptions(valueLabelObj, value)
     }
     static #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
-    //#makeOptions(valueLabelObj, value) { return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     static #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
     static #makeLb(type, id, text) { return van.tags.label(((['radio','check','checkbox'].some(v=>v===type)) ? ({}) : ({for:id})), text) }
 }
 class SceneMap {
     constructor() { this._map = new Map(); }
-    //init(tsv, isHeaderTrim) {
     init(tsv, hasNotHeader) {
         this._map.clear()
-        //const columns = Tsv.fromStr(tsv, isHeaderTrim)
         const columns = Tsv.fromStr(tsv, hasNotHeader)
         for (let col of columns) {
             const obj = TsvParser.fromColumn(col)
@@ -176,7 +166,6 @@ class SceneMap {
             const scene = this._map.get(col.sid)
             const uiMap = scene.uiMap
             if (!scene.uiMap.has(col.eid)) { scene.uiMap.set(col.eid, {col:col, obj:obj}) }
-            //if (!scene.uiMap.has(col.eid)) { scene.uiMap.set(col.eid, {col:col, obj:obj, dom:Tag.make(col,obj)})}) }
         }
     }
     get(sid, eid) {
@@ -202,13 +191,10 @@ class SceneMap {
         return this.#makeTable(s.uiMap, sid)
     }
     #makeDom(sid) {
-//        console.error('#makeDom(sid)')
         for (let eid of this.get(sid).uiMap.keys()) {
             const v = this._map.get(sid).uiMap.get(eid)
             v.dom = Tag.make(v.col, v.obj)
-//            this._map.get(sid).uiMap.set(eid, Object.assign(v, {dom:Tag.make(v.col, v.obj)}))
         }
-//        console.error(this.get(sid).uiMap)
     }
     #makeTable(uiMap, sid) {
         const table = SceneMakeHelper.table(uiMap, sid)
@@ -221,8 +207,8 @@ class SceneMakeHelper {
         return van.tags.table({id:sid},
             van.tags.caption(sid),
             Array.from(uiMap.entries()).map(([eid, v])=>{
-                const dom=Tag.make(v.col, v.obj)
-                return van.tags.tr(van.tags.th(v.col.label), van.tags.td(dom.el, dom.dl))
+                if (!v.hasOwnProperty('dom')) { v.dom = Tag.make(v.col, v.obj) }
+                return van.tags.tr(van.tags.th(v.col.label), van.tags.td(v.dom.el, v.dom.dl))
             })
         )
     }
@@ -238,7 +224,7 @@ class SceneTransitioner {
         this._dispMap = new Map()
         console.log(this._map)
     }
-    set onSelected(v) { console.log('***************************************************onSelected:', v, Type.isFunction(v));if (Type.isFunction(v)) { this._fn = v } }
+    set onSelected(v) { if (Type.isFunction(v)) { this._fn = v } }
     init(sid) { this.#addAll(sid) }
     #addAll(sid) {
         van.add(document.body, this._map.makeAll())
@@ -261,13 +247,10 @@ class SceneTransitioner {
     }
     first() { this.select(this._seq.first()[1]) }
     last() { this.select(this._seq.last()[1]) }
-    //#initDisp() { for (let [sid,v] of this._map.get()) { this._dispMap.set(sid, Css.get('display',document.querySelector(`#${sid}`))) }
-    //#initDisp() { for (let [sid,v] of this._map.get()) { const d=Css.get('display',document.querySelector(`#${sid}`)); this._dispMap.set(sid, ((d) ? d : 'block')); }
     #initDisp() { for (let [sid,v] of this._map.get()) { const d=Css.get('display',document.querySelector(`#${sid}`)); this._dispMap.set(sid, ((d) ? d : 'block')); } }
     #hideAll() { for (let [sid,v] of this._map.get()) { this.#hide(sid) } }
     #hide(sid) { this.#setDisp(sid, false) }
     #show(sid) { this.#setDisp(sid, true) }
-    //#setDisp(sid, isShow) { const el=document.querySelector(`#${sid}`); if (el) {el.style.setProperty('display', ((isShow) ? 'block' : 'none'))} }
     #setDisp(sid, isShow) { const el=document.querySelector(`#${sid}`); if (el) {el.style.setProperty('display', ((isShow) ? this._dispMap.get(sid) : 'none'))} }
 }
 class SceneStore { // 入力要素の値を取得・設定する
