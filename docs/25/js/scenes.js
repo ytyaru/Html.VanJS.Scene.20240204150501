@@ -264,7 +264,8 @@ class VanButtonMaker {
     fromColumn(column, obj) {
         for (let [key, type] of Object.entries(HTMLVanButtonElement.ATTRS)) {
             if (!obj.attrs.hasOwnProperty(key)) { continue }
-            obj.attrs[key] = this.#boxing(type, obj.attrs[key])
+//            obj.attrs[key] = this.#boxing(type, obj.attrs[key])
+            obj.attrs[key] = Type.boxing(type, obj.attrs[key])
         }
         return obj
     }
