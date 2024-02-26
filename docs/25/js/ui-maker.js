@@ -1,26 +1,47 @@
 (function(){
 class Tsv {
+    get DELIM() { return '\t' }
+    load(tsv, hasNotHeader) {
+        tsv = tsv.trimLine()
+        tsv = ((hasNotHeader) ? tsv : this.#removeHeader(tsv))
+        const lines = tsv.split(/\r?\n/)
+        return lines.map(line=>this.line(line))
+        //return lines.map(line=>line.split(this.DELIM))
+    }
+    line(line) { return line.split(this.DELIM) }
+    countCols(line) { return line.count(this.DELIM) + 1 }
+    countLines(tsv) { return line.count('\n') + 1 }
+    static #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
+}
+class SceneMap {
     constructor() {
         this._keys = 'sid,eid,type,label,placeholder,value,datalist,attrs'.split(',')
-        this._DELIM = '\t'
         this._map = new Map()
+        this._tsv = new Tsv()
     }
-    load(tsv, isDelHead) {
-        const lines = tsv.split(/\r?\n/)
-        const cols = lines.map(line=>line.split(this._DELIM))
-        for (let line of lines) { this.add(...cols) }
-        return this._map
+    loadTsv(tsv, hasNotHeader) {
+        const tsv = this._tsv.load(tsv, hasNotHeader)
+        for (let line of tsv) { this.add(...line) }
+    }
+    addElsTsv(sid, tsv) {
+        const tsv = this._tsv.load(tsv, hasNotHeader)
+        for (let line of tsv) { this.add(sid, ...line) }
+    }
+    has(sid, eid) {
+        if (sid && eid) { return (this._map.has(sid) && this._map.get(sid).uiMap.has(eid)) }
+        else if (sid) { return this._map.has(sid) }
+        return false
     }
     add(sid, eid, type, label, placeholder, value, datalist, attrs) {
         const col = this.#line(sid, eid, type, label, placeholder, value, datalist, attrs)
         if (this._map.has(sid)) { this._map.get(sid).add(eid, col) }
         //else { this._map.add(sid, new Map([[eid, col]])) }
-        else { this._map.add(sid, new Map([[eid, ({col:col})]])) }
+        else { this._map.add(sid, {uiMap:new Map([[eid, ({col:col})]]), make:SceneMakeHelper.table}) }
     }
     set(sid, eid, type, label, placeholder, value, datalist, attrs) {
         const col = this.#line(sid, eid, type, label, placeholder, value, datalist, attrs)
         if (this._map.has(sid)) { this._map.get(sid).set(eid, col) }
-        else { this._map.add(sid, new Map([[eid, ({col:col})]])) }
+        else { this._map.add(sid, {uiMap:new Map([[eid, ({col:col})]]), make:SceneMakeHelper.table}) }
         //else { this._map.add(sid, new Map([[eid, col]])) }
     }
     get(sid, eid) {
@@ -33,6 +54,7 @@ class Tsv {
         else if (sid) { return this._map.delete(sid) }
         return this._map.clear()
     }
+    clear() { this._map.clear() }
     #line(sid, eid, type, label, placeholder, value, datalist, attrs) {
         if (eid===undefined) {
                  if (Type.isAry(sid)) { return this.#array(sid) }
@@ -44,10 +66,10 @@ class Tsv {
         }
         throw new Error(`入力値不足により中断します。UIを追加するとき引数値は${this._keys.length}個必要です。その内容と順序は${this._keys}です。型は文字列、配列、オブジェクト、関数引数のいずれかです。しかし与えられた引数には不足があるようです。その内容は ${sid}, ${eid}, ${type}, ${label}, ${playceholder}, ${value}, ${datalist}, ${attrs} でした。`)
     }
-    #string(str) { return this.#array(str.split('\t')) }
-        const count = this.#count(str, '\t')
-        if (count < (this._keys.length - 1)) { throw new Error(`入力値不足により中断します。文字列型をセットするとき、要素数は${this._keys.length}個必要です。要素を区切る文字はTabです。しかし与えられた値にはTabが${count}個しかありませんでした。その内容は ${str} でした。`) }
-        return this.#array(str.split(this._DELIM))
+    #string(str) {
+        const count = this._tsv.countCols(str)
+        if (count < this._keys.length) { throw new Error(`入力値不足により中断します。文字列型をセットするとき、要素数は${this._keys.length}個必要です。要素を区切る文字はTabです。しかし与えられた値にはTabが${count}個しかありませんでした。その内容は ${str} でした。`) }
+        return this.#array(this._tsv.line(str))
     }
     #array(ary) {
         if (ary.length < this._keys.length) { throw new Error(`入力値不足により中断します。配列型をセットするとき、要素数は${this._keys.length}個必要です。その内容と順序は ${this._keys} です。しかし与えられた値は${ary.length}個しかありませんでした。その内容は ${ary} でした。`) }
@@ -59,8 +81,20 @@ class Tsv {
         }
         return obj
     }
-    #count(str, t) { return (str.match(new RegExp(t, 'g')) || []).length }
 }
+class SceneMakeHelper {
+    static table(uiMap, sid) {
+        return van.tags.table({id:sid},
+            van.tags.caption(sid),
+            Array.from(uiMap.entries()).map(([eid, v])=>{
+                if (!v.hasOwnProperty('dom')) { v.dom = Tag.make(v.col, v.obj) }
+                return van.tags.tr(van.tags.th(v.col.label), van.tags.td(v.dom.el, v.dom.dl))
+            })
+        )
+    }
+    static tag(col, obj) { return Tag.make(col, obj) }
+}
+
 /*
 const maker = new UiMaker()
 maker.Tsv.load(tsv)
@@ -70,6 +104,7 @@ const scene = new Scene(maker)
 scene.setAttr(sid, eid, key, value)
 scene.mergeAttrs(sid, eid, {key:val, key:val})
 scene.addChild(sid, eid, child)
+maker.makeDoms()
 scene.setMake(sid, (uiMap, sid)=>{    // コールバック関数の直前であるsetMakeの内部で maker.makeDoms() する
     const uiObj = uiMap.get(eid)
     uiObj.dom.el
@@ -79,14 +114,32 @@ scene.setMake(sid, (uiMap, sid)=>{    // コールバック関数の直前であ
 })
 scene.addBody()
 */
+/*
+const maker = new UiMaker()
+maker.Tsv.load(tsv)
+maker.Tsv.add(),set(),get(),del()
+maker.makeTags()
+maker.setAttr(sid, eid, key, value)
+maker.mergeAttrs(sid, eid, {key:val, key:val})
+maker.addChild(sid, eid, child)
+maker.setMake(sid, (uiMap, sid)=>{    // コールバック関数の直前であるsetMakeの内部で maker.makeDoms() する
+    const uiObj = uiMap.get(eid)
+    uiObj.dom.el
+    uiObj.dom.dl
+    uiObj.dom.lb
+    return van.tags.div()
+})
+maker.addBody()
+
+*/
 class UiMaker {
     constructor() {
-        this._tsv = new Tsv()
+        this._map = new SceneMap()
         this._parsers = new TsvTypeParsers()
-        this._map = new Map()
     }
-    get Tsv() { return this._tsv }
+    get Map() { return this._map }
     get Parsers() { return this._parsers }
+    load(tsv, hasNotHeader) { this._map.loadTsv(tsv, hasNotHeader) }
     make() {
         for (let [sid, uiMap] of this._tsv.get()) {
             for (let [eid, uiObj] of uiMap) {
@@ -148,6 +201,11 @@ class UiMaker {
         obj.dom = {el:obj.parser.makeEl(col,tag), dl:obj.parser.makeDl(col,tag), lb:obj.parser.makeLb(col,tag)}
         return obj
     }
+    setAttr(sid, eid, key, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
+    //addChild(sid, eid, value) { if (this._tsv.has(sid, eid)) { if (Type.isAry(this.get(sid, eid).tag.children)) {this.get(sid, eid).tag.children=[]} this.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
+    addChild(sid, eid, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
+    margeAttrs(sid, eid, attrs) { this._map.get(sid, eid).tag.attrs[key] = ({...this._map.get(sid, eid).obj.attrs[key], ...attrs}) }
+    setMake(sid, fn) { this._map.get(sid).make = fn }
 }
 class TsvTypeParsers {
     constructor() {
@@ -179,6 +237,7 @@ class TsvTypeParsers {
         tag.attrs['data-sid'] = column.sid.Chain
         tag.attrs['data-eid'] = column.eid.Chain
         this.#setValue(tag, parser)
+        if (tag.hasOwnProperty('children')) { tag.children = [] }
         return parser.makeTag(column, tag)
     }
     #setValue(tag, parser) {
