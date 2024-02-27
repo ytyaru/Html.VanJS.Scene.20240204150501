@@ -109,6 +109,7 @@ origin-ui	writing-mode	button	書字方向切替
     scene.Map.setChildren('dl-ex', 'viewer', htmls.val)
     scene.Map.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
     scene.Map.setChildren('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
+    scene.UiMaker.makeDom('third')
     scene.Map.setMake('third', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),

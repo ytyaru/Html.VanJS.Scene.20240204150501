@@ -11,20 +11,64 @@ class Tsv {
     line(line) { return line.split(this.DELIM) }
     countCols(line) { return line.count(this.DELIM) + 1 }
     countLines(tsv) { return line.count('\n') + 1 }
-    static #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
+    #removeHeader(text) { const i=text.indexOf('\n'); return ((-1===i) ? text : text.substr(i+1)); }
+}
+class _TsvHeader {
+    get(lang='en', isLong=false) { return (('ja'===lang) ? this.getJa(isLong) : this.getEn(isLong)) }
+    getEn(isLong=false) {
+        if (isLong) { return ['sceneId','elementId','type','label','placeholder','value,min,max,step','datalist','attributes'].join('\t') }
+        return ['sid','eid','type','label','placeholder','value','datalist','attrs'].join('\t')
+    }
+    getJa(isLong=false) {
+        if (isLong) { return ['画面ID','要素ID','型','ラベル','プレースホルダ','値,最小値,最大値,刻値','データリスト','他属性'].join('\t') }
+        return ['画面ID','要素ID','型','ラベル','プレースホルダ','値','データリスト','他属性'].join('\t')
+    }
+}
+const TsvHeader = new _TsvHeader()
+
+class TsvSample {
+//    constructor() { this._header = new TsvHeader() }
+//    get header() { return this._header }
+    get header() { return TsvHeader }
+//    get(lang='en', isLong=false) { return this._header.get(lang,isLong) + `
+    get(lang='en', isLong=false) { return TsvHeader.get(lang,isLong) + `
+dl-ex	description	textarea	説明	説明。		["候補１(無効)","候補２(無効)"]	
+dl-ex	category	select	カテゴリ		key2	{"key1":"label-1", "groupValue":{"key2":"label-2"}}	
+dl-ex	title	text	タイトル	表題		["候補１","候補２"]	
+dl-ex	search	search	検索	検索キーワード		["候補１","候補２"]	
+dl-ex	url	url	URL	https://domain.com/		["候補１","候補２"]	
+dl-ex	tel	tel	電話番号	00000000000		["候補１","候補２"]	
+dl-ex	password	password	パスワード	見せられないよ！		["候補１(無効)","候補２(無効)"]	
+dl-ex	even	number	偶数	0	0,0,100,2	[0,25,50,75,100]	
+dl-ex	odd	range	奇数	0	0,1,99,2	[1,24,49,74,99]	
+dl-ex	datetime	datetime	日時			["1999-12-31T23:59:59","2000-01-01T00:00:00"]	
+dl-ex	date	date	日付			["1999-12-31","2000-01-01"]	
+dl-ex	month	month	月			["1999-12","2000-01"]	
+dl-ex	week	week	週			["1999-W52","2000-W01"]	
+dl-ex	time	time	時刻			["00:00","23:59"]	
+dl-ex	color	color	色			["#ff0000","#00ff00","#0000ff"]	
+dl-ex	file	file	ファイル			["候補１(無効)","候補２(無効)"]	
+dl-ex	sex	radio	性別		{"male":"男", "female":"女"}		
+dl-ex	isMan	check	人間か		true		
+dl-ex	editor	div	エディタ				{"tabindex":0, "contenteditable":true}
+dl-ex	viewer	div	ビューア				{"tabindex":0}
+dl-ex	save	button			JSONファイルダウンロード		
+    `}
 }
 class SceneMap {
     constructor() {
-        this._keys = 'sid,eid,type,label,placeholder,value,datalist,attrs'.split(',')
+        //this._keys = 'sid,eid,type,label,placeholder,value,datalist,attrs'.split(',')
+        //this._keys = TsvHeader.get().split('\t').join(',')
         this._map = new Map()
         this._tsv = new Tsv()
+        this._keys = this._tsv.line(TsvHeader.get())
     }
     loadTsv(tsv, hasNotHeader) {
-        const tsv = this._tsv.load(tsv, hasNotHeader)
+        tsv = this._tsv.load(tsv, hasNotHeader)
         for (let line of tsv) { this.add(...line) }
     }
     addElsTsv(sid, tsv) {
-        const tsv = this._tsv.load(tsv, hasNotHeader)
+        tsv = this._tsv.load(tsv, hasNotHeader)
         for (let line of tsv) { this.add(sid, ...line) }
     }
     has(sid, eid) {
@@ -34,23 +78,23 @@ class SceneMap {
     }
     add(sid, eid, type, label, placeholder, value, datalist, attrs) {
         const col = this.#line(sid, eid, type, label, placeholder, value, datalist, attrs)
-        if (this._map.has(sid)) { this._map.get(sid).add(eid, col) }
+        if (this._map.has(sid)) { this._map.get(sid).uiMap.set(eid, col) }
         //else { this._map.add(sid, new Map([[eid, col]])) }
-        else { this._map.add(sid, {uiMap:new Map([[eid, ({col:col})]]), make:SceneMakeHelper.table}) }
+        else { this._map.set(sid, {uiMap:new Map([[eid, ({col:col})]]), make:SceneMakeHelper.table}) }
     }
     set(sid, eid, type, label, placeholder, value, datalist, attrs) {
         const col = this.#line(sid, eid, type, label, placeholder, value, datalist, attrs)
-        if (this._map.has(sid)) { this._map.get(sid).set(eid, col) }
+        if (this._map.has(sid)) { this._map.get(sid).uiMap.set(eid, col) }
         else { this._map.add(sid, {uiMap:new Map([[eid, ({col:col})]]), make:SceneMakeHelper.table}) }
         //else { this._map.add(sid, new Map([[eid, col]])) }
     }
     get(sid, eid) {
-        if (sid && eid) { return this._map.get(sid).get(eid) }
+        if (sid && eid) { return this._map.get(sid).uiMap.get(eid) }
         else if (sid) { return this._map.get(sid) }
         return this._map
     }
     del(sid, eid) {
-        if (sid && eid) { return this._map.get(sid).delete(eid) }
+        if (sid && eid) { return this._map.get(sid).uiMap.delete(eid) }
         else if (sid) { return this._map.delete(sid) }
         return this._map.clear()
     }
@@ -62,7 +106,7 @@ class SceneMap {
             else if (Type.isObj(sid)) { return this.#object(sid) }
         }
         if (undefined!==sid && undefined!==eid && undefined!==type && undefined!==label && undefined!==placeholder && undefined!==value && undefined!==datalist && undefined!==attrs) {
-            return {sid:sid, eid:eid:, type:type, label:label, placeholder:placeholder, value:value, datalist:datalist, attrs:attrs}
+            return {sid:sid, eid:eid, type:type, label:label, placeholder:placeholder, value:value, datalist:datalist, attrs:attrs}
         }
         throw new Error(`入力値不足により中断します。UIを追加するとき引数値は${this._keys.length}個必要です。その内容と順序は${this._keys}です。型は文字列、配列、オブジェクト、関数引数のいずれかです。しかし与えられた引数には不足があるようです。その内容は ${sid}, ${eid}, ${type}, ${label}, ${playceholder}, ${value}, ${datalist}, ${attrs} でした。`)
     }
@@ -81,7 +125,20 @@ class SceneMap {
         }
         return obj
     }
+    setAttr(sid, eid, key, value) { if (this._map.has(sid, eid)) { this.get(sid, eid).tag.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
+    //addChild(sid, eid, value) { if (this._tsv.has(sid, eid)) { if (Type.isAry(this.get(sid, eid).tag.children)) {this.get(sid, eid).tag.children=[]} this.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
+    addChild(sid, eid, value) { if (this.has(sid, eid)) { this.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
+    margeAttrs(sid, eid, attrs) { this.get(sid, eid).tag.attrs[key] = ({...this._map.get(sid, eid).obj.attrs[key], ...attrs}) }
+    setMake(sid, fn) { this.get(sid).make = fn }
 }
+/*
+class TsvTypeParsers {
+    constructor() {
+        this._parsers = []
+        this.#addDefaultParser()
+    }
+}
+*/
 class SceneMakeHelper {
     static table(uiMap, sid) {
         return van.tags.table({id:sid},
@@ -134,10 +191,10 @@ maker.addBody()
 */
 class UiMaker {
     constructor() {
-        this._map = new SceneMap()
+//        this._map = new SceneMap()
         this._parsers = new TsvTypeParsers()
     }
-    get Map() { return this._map }
+//    get Map() { return this._map }
     get Parsers() { return this._parsers }
     load(tsv, hasNotHeader) { this._map.loadTsv(tsv, hasNotHeader) }
     make() {
@@ -201,21 +258,64 @@ class UiMaker {
         obj.dom = {el:obj.parser.makeEl(col,tag), dl:obj.parser.makeDl(col,tag), lb:obj.parser.makeLb(col,tag)}
         return obj
     }
+    /*
     setAttr(sid, eid, key, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
     //addChild(sid, eid, value) { if (this._tsv.has(sid, eid)) { if (Type.isAry(this.get(sid, eid).tag.children)) {this.get(sid, eid).tag.children=[]} this.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
     addChild(sid, eid, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
     margeAttrs(sid, eid, attrs) { this._map.get(sid, eid).tag.attrs[key] = ({...this._map.get(sid, eid).obj.attrs[key], ...attrs}) }
     setMake(sid, fn) { this._map.get(sid).make = fn }
+    */
 }
 class TsvTypeParsers {
     constructor() {
         this._parsers = []
+        this.#addDefaultParser()
+    }
+    #addDefaultParser() {
+        this.add(new TextParser())
+        this.add(new UrlParser())
+        this.add(new SearchParser())
+        this.add(new TelParser())
+        this.add(new PasswordParser())
+        this.add(new NumberParser())
+        this.add(new RangeParser())
+        this.add(new DateTimeParser())
+        this.add(new DateParser())
+        this.add(new TimeParser())
+        this.add(new MonthParser())
+        this.add(new WeekParser())
+        this.add(new ColorParser())
+        this.add(new FileParser())
+        this.add(new RadioParser())
+        this.add(new CheckboxParser())
+        this.add(new ButtonParser())
+        this.add(new SubmitButtonParser())
+        this.add(new ResetButtonParser())
+        this.add(new ImageButtonParser())
+        this.add(new SelectParser())
+        this.add(new TextareaParser())
     }
     //add(type) { if (type instanceof TsvUiType) { this._parsers.push(type) } }
+    //#matchParse() { return this._parsers.filter(p=>p.match(parser.types)) }
+    //#matchParser(type) { return this._parsers.filter(p=>p.match(type)) }
+    #matchParser(types) { return this._parsers.filter(p=>p.match(type)) }
+    /*
+    #matchParse(type) {
+        const ps = this._parsers.filter(p=>p.match(type))
+        if ()
+        return ps[0]
+    }
+    */
     add(parser) {
-        if (parser instanceof TsvUiType) {
-            const types = this._parsers.filter(t=>t.match(parser.types))
-            if (0 < types.length) { throw new Error('重複エラー。引数は既存TsvUiTypeのtype名と重複します。') }
+        console.log(parser.constructor.name, ':', parser instanceof UiParser)
+        if (parser instanceof UiParser) {
+//            const types = this._parsers.filter(p=>p.match(parser.types))
+//            const parsers = this.#matchParser()
+            console.log(this._parsers)
+            const parsers = this._parsers.filter(p=>p.match(parser.types))
+            console.log(parsers, parser.types)
+            if (0 < parsers.length) { throw new Error(`重複エラー。引数は既存TsvUiTypeのtype名と重複します。: ${parsers.types}`) }
+            else if (1 < parsers.length) { throw new Error(`重複エラー。すでに重複したパーサがあります。: ${parsers.length} : ${parsers.map(p=>p._types)}`) }
             this._parsers.push(parser)
         } else { throw new Error(`型エラー。引数はTsvUiType型であるべきです。`) }
     }
@@ -288,11 +388,18 @@ class UiParser {
         'ButtonLike': 2,
         'Children': 3,
     }
-    constructor() {
-        this.valueKinds = UiParser.ValueKinds.Attr
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) {
+        this._types = types
+        this._tagName = tagName
+        this._attrs = attrs
+        this._valueKinds = UiParser.ValueKinds.Attr
 //        this.isButtonValue = false
 //        this.isTextValue = false
     }
+    get types() { return this._types }
+    get tagName() { return this._tagName}
+    get attrs() { return this._attrs }
+    get valueKinds() { return this._valueKinds }
     /*
     match(type) {
         if (Type.isStr(type)) { return 'text'===type }
@@ -305,6 +412,22 @@ class UiParser {
         throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
     }
     */
+    match(type) {
+             if (Type.isStr (type) && Type.isStr (this._types)) { return this._types===type }
+        else if (Type.isStr (type) && Type.isStrs(this._types)) { return this._types.map(t=>t===type) }
+        else if (Type.isStrs(type) && Type.isStr (this._types)) { return type.some(t=>t===this._types) }
+        else if (Type.isStrs(type) && Type.isStrs(this._types)) {
+            for (let typ of type) {
+                for (let t of this._types) {
+                    if (t===typ) { return true }
+                }
+            }
+            return false
+        }
+        throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
+
+    }
+    /*
     match(type, v) {
              if (Type.isStr (type) && Type.isStr (v)) { return v===type }
         else if (Type.isStr (type) && Type.isStrs(v)) { return v.map(_=>_===type) }
@@ -319,6 +442,7 @@ class UiParser {
         }
         throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
     }
+    */
     getTag(type) { return {tagName:'input', attrs:{type:'text'}} }
     makeTag(col, tag) { return tag }
     makeEl(col, tag) {
@@ -358,6 +482,84 @@ Object.defineProperty(UiParser, 'ValueKinds', {
     writable: false,
 });
 */
+
+
+class TextParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('text','input',{type:'text'}) } }
+class UrlParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('url','input',{type:'url'}) } }
+class TelParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('tel','input',{type:'tel'}) } }
+class SearchParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('search','input',{type:'search'}) } }
+class PasswordParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('password','input',{type:'password'}) } }
+class NumberParser extends UiParser {
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('number','input',{type:'number'}) }
+    makeTag(col, tag) {
+        tag = super.makeTag(col, tag)
+        const [value, min, max, step] = col.value.split(',')
+        const vals = JSON.stringify({value, min, max, step})
+        for (let attr of ['value','min','max','step']) {
+            const n = Number(vals[attr])
+            if (!isNaN(n)) { tag.attrs[attr] = n }
+        }
+        return tag
+    }
+}
+class RangeParser extends NumberParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('range','input',{type:'range'}) } }
+class DateTimeParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super(['datetime-local','datetime'],'input',{type:'datetime-local'}) } }
+class DateParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('date','input',{type:'date'}) } }
+class TimeParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('time','input',{type:'time'}) } }
+class MonthParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('month','input',{type:'month'}) } }
+class WeekParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('week','input',{type:'week'}) } }
+class ColorParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('color','input',{type:'color'}) } }
+class FileParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('file','input',{type:'file'}) } }
+class RadioParser extends UiParser {
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('radio','input',{type:'radio'}) }
+    makeEl(col, tag) {
+        const valueLabelObj = JSON.parse(col.datalist)
+        // [<label><input>]
+        // attrsを共用する。複数のラジオボタンで。けどそれは困るのでディープコピーした。
+        //return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;return van.tags.label(van.tags.input(att), v);})
+        return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
+    }
+}
+class CheckboxParser extends UiParser {
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super(['checkbox','check'],'input','checkbox') }
+    makeEl(col, tag) {
+        tag.attrs.checked = ['true','1','checked'].some(v=>v===tag.attrs.value)
+        tag.attrs.value = null
+        return van.tags.label(van.tags.input(attrs), label)
+    }
+}
+class ButtonParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.ButtonLike) { super('button','button',{type:'button'}) } }
+class SubmitParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.ButtonLike) { super('submit','button',{type:'submit'}) } }
+class ResetParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.ButtonLike) { super('reset','button',{type:'reset'}) } }
+class ImageParser extends UiParser {
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.ButtonLike) { super('image','button',{type:'image'}) }
+    makeEl(col, tag) {
+        const el = super.makeEl(col, tag)
+        const img = document.createElement('img')
+        img.src = tag.attrs.value
+        el.appendChild(img)
+        return el
+    }
+}
+class SelectParser extends UiParser {
+    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super('select','select',{}) }
+    makeEl(col, tag) {
+        const el = super.makeEl(col, tag)
+        if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
+        el.appendChild(this.#makeOptions(tag.datalist, col.value))
+        return el
+    }
+    #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
+    #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
+}
+class TextareaParser extends UiParser { constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) { super(['textarea','area'],'textarea',{}) } }
+
+/*
+class TextParser extends UiParser {
+    constructor() { super() }
+    match(type, v) { return super.match(type, 'text') }
+    getTag(type) { return {tagName:'input', attrs:{type:'text'}} }
+}
 class UrlParser extends UiParser {
     constructor() { super() }
     match(type, v) { return super.match(type, 'url') }
@@ -373,7 +575,7 @@ class TelParser extends UiParser {
     match(type, v) { return super.match(type, 'tel') }
     getTag(type) { return {tagName:'input', attrs:{type:'tel'}} }
 }
-class TelParser extends UiParser {
+class PasswordParser extends UiParser {
     constructor() { super() }
     match(type, v) { return super.match(type, 'password') }
     getTag(type) { return {tagName:'input', attrs:{type:'password'}} }
@@ -383,7 +585,7 @@ class NumberParser extends UiParser {
     match(type, v) { return super.match(type, 'number') }
     getTag(type) { return {tagName:'input', attrs:{type:'number'}} }
     makeTag(col, tag) {
-        const tag = super.makeTag(col, tag)
+        tag = super.makeTag(col, tag)
         const [value, min, max, step] = col.value.split(',')
         const vals = JSON.stringify({value, min, max, step})
         for (let attr of ['value','min','max','step']) {
@@ -455,22 +657,6 @@ class CheckboxParser extends UiParser {
         return van.tags.label(van.tags.input(attrs), label)
     }
 }
-
-
-
-class SelectParser extends UiParser {
-    constructor() { super() }
-    match(type, v) { return super.match(type, 'select') }
-    getTag(type) { return {tagName:'select', attrs:{}} }
-    makeEl(col, tag) {
-        const el = super.makeEl(col, tag)
-        if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
-        el.appendChild(this.#makeOptions(tag.datalist, col.value))
-        return el
-    }
-    #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
-    #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
-}
 class ButtonParser extends UiParser {
     constructor() { super() }
     match(type, v) { return super.match(type, 'button') }
@@ -490,10 +676,6 @@ class ImageButtonParser extends UiParser {
     constructor() { super() }
     match(type, v) { return super.match(type, 'image') }
     getTag(type) { return {tagName:'button', attrs:{}} }
-    makeTag(col, tag) {
-        const tag = super.makeTag(col, tag)
-        tag.children
-    }
     makeEl(col, tag) {
         const el = super.makeEl(col, tag)
         const img = document.createElement('img')
@@ -502,22 +684,32 @@ class ImageButtonParser extends UiParser {
         return el
     }
 }
-
-
+class SelectParser extends UiParser {
+    constructor() { super() }
+    match(type, v) { return super.match(type, 'select') }
+    getTag(type) { return {tagName:'select', attrs:{}} }
+    makeEl(col, tag) {
+        const el = super.makeEl(col, tag)
+        if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
+        el.appendChild(this.#makeOptions(tag.datalist, col.value))
+        return el
+    }
+    #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
+    #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
+}
 class TextareaParser extends UiParser {
     constructor() { super() }
     match(type, v) { return super.match(type, 'textarea') }
     getTag(type) { return {tagName:'textarea', attrs:{}} }
 }
-
-
+*/
 class VanButtonParser extends UiParser {
     constructor() { this.super(); this.valueKinds = UiParser.ValueKinds.ButtonLike; }
     match(type, v) { return super.match(type, 'van-button') }
     getTag(type) { return {tagName:'van-button', attrs:{}} }
     makeTag(col, tag) {
-        const tag = super.makeTag(col, tag) // JSON.parse()では関数型に変換できないので以下処理を行う（onpush,onhold）
-        tag.attrs.value = this.#newLine((column.value || column.label || ''))
+        tag = super.makeTag(col, tag) // JSON.parse()では関数型に変換できないので以下処理を行う（onpush,onhold）
+        //tag.attrs.value = this.#newLine((column.value || column.label || ''))
         for (let [key, type] of Object.entries(HTMLVanButtonElement.ATTRS)) {
             if (!tag.attrs.hasOwnProperty(key)) { continue }
             obj.attrs[key] = Type.to(type, tag.attrs[key])
@@ -538,15 +730,109 @@ class VanButtonParser extends UiParser {
         return el
     }
 }
-
-
-class UiMaker {
-    constructor() {
-
+class SceneTransitioner {
+    constructor(sceneMap) { // SceneMap instance
+        this._map = sceneMap
+        this._now = null
+        this._mode = {dir:0, loopMethod:0}
+        this._seq = new MapSequence(this._map.get(), 0)
+        this._fn = null
+        this._dispMap = new Map()
+        console.log(this._map)
     }
-    load(tsv, isDelHead) {
-
+    set onSelected(v) { if (Type.isFunction(v)) { this._fn = v } }
+    get nowId() { return this._now }
+    get nowEl() { return document.querySelector(this._now) }
+    init(sid) { this.#addAll(sid) }
+    #addAll(sid) {
+        van.add(document.body, this._map.makeAll())
+        this.#initDisp()
+        this.#hideAll()
+        this.select(sid)
+    }
+    select(sid) {
+        if (!this._map.get().has(sid)) { sid = this._map.get().entries().next().value[0] } // sidが未指定なら最初の画面を選択する
+        console.log(`select(): sid=${sid}`, this._fn, Type.isFunction(this._fn))
+        this._now = sid
+        this._seq.key = sid
+        this.#hideAll()
+        this.#show(sid)
+        if (Type.isFunction(this._fn)) { this._fn(sid) }
+    }
+    move() {
+        const [i, k, v] = this._seq.next()
+        this.select(k)
+    }
+    first() { this.select(this._seq.first()[1]) }
+    last() { this.select(this._seq.last()[1]) }
+    #initDisp() { for (let [sid,v] of this._map.get()) { const d=Css.get('display',document.querySelector(`#${sid}`)); this._dispMap.set(sid, ((d) ? d : 'block')); } }
+    #hideAll() { for (let [sid,v] of this._map.get()) { this.#hide(sid) } }
+    #hide(sid) { this.#setDisp(sid, false) }
+    #show(sid) { this.#setDisp(sid, true) }
+    #setDisp(sid, isShow) { const el=document.querySelector(`#${sid}`); if (el) {el.style.setProperty('display', ((isShow) ? this._dispMap.get(sid) : 'none'))} }
+}
+class SceneStore { // 入力要素の値を取得・設定する
+    constructor(sceneMap) { this._map = sceneMap.get() } // sceneMap: SceneMap instance
+    get(sid) { return EV2Obj.get(this._map, sid) } // {sid:{eid:value, ...}, ...}
+    set(obj) { return Obj2EV.set(obj) } // obj:{sid:{eid:value, ...}, ...}
+}
+class EV2Obj { // 要素の値をオブジェクトに変換する
+    static get(map, sid) { // {sid:{eid:value, ...}, ...}
+        console.log(map, sid)
+        const json = {}
+        if (sid) { return this.#jsonScene(map, sid) }
+        console.log(this._map)
+        for (let [sid, s] of map.entries()) {
+            json[sid] = this.#evs(sid, s.uiMap)
+        }
+        return json
+    }
+    static #jsonScene(map, sid) { return this.#evs(sid, map.get(sid).uiMap) }
+    static #evs(sid, uiMap) { return this.#pickBy(Object.assign(...Array.from(uiMap.entries()).map(([eid,e])=>{console.log(sid,eid);return ({[eid]:document.querySelector(`[data-sid="${sid.Chain}"][data-eid="${eid.Chain}"]`).jsonValue})}))) }
+    static #pickBy(obj) { return Object.assign(...Array.from(Object.entries(obj)).filter(([k,v])=>(undefined!==v)).map(([k,v])=>({[k]:v})))}
+}
+class Obj2EV { // オブジェクトを要素の値に設定する
+    static set(obj) {
+        for (let [sid, s] of Object.entries(obj)) {
+            for (let [eid, value] of Object.entries(s)) {
+                document.querySelector(`[data-sid="${sid.Chain}"][data-eid="${eid.Chain}"]`).jsonValue = obj[sid][eid]
+            }
+        }
     }
 }
-window.UiMaker = UiMaker
+class SceneBuilder {
+    constructor() {
+        this._map = new SceneMap()
+        this._uiMaker = new UiMaker()
+    }
+}
+
+class Scene {
+    constructor() {
+        this._tsv = new TsvSample()
+        this._map = new SceneMap()
+        this._uiMaker = new UiMaker()
+        this._trans = null
+        this._store = null
+        //this._uiex = new UiMakeExtend()
+    }
+    get Tsv() { return this._tsv }
+    get Map() { return this._map }
+    get UiMaker() { return this._uiMaker }
+    get Transitioner() { return this._trans }
+    get Store() { return this._store }
+    get UiMakeExtend() { return UiMakeExtend }
+    get MakeHelper() { return SceneMakeHelper }
+    static get _MakeHelper() { return SceneMakeHelper }
+    init(tsv, isHeaderTrim) {
+//        this._map.init(tsv, isHeaderTrim)
+        this._map.loadTsv(tsv, isHeaderTrim)
+        this._uiMaker.makeTags() 
+        this._trans = new SceneTransitioner(this._map)
+        this._store = new SceneStore(this._map)
+    }
+    addBody() { this._trans.init() }
+}
+window.Scene = Scene
+//window.UiMaker = UiMaker
 })()
