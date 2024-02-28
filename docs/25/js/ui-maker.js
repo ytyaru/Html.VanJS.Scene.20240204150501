@@ -207,7 +207,7 @@ class UiMaker {
                 const obj = this._map.get(sid, eid)
                 obj.parser = this._parsers.get(obj.col.type)
                 obj.tag = obj.parser.makeTag(obj.col, this._parsers.makeTag(obj.col))
-                obj.dom = {el:obj.parser.makeEl(col,tag), dl:obj.parser.makeDl(col,tag), lb:obj.parser.makeLb(col,tag)}
+                obj.dom = {el:obj.parser.makeEl(obj.col,obj.tag), dl:obj.parser.makeDl(obj.col,obj.tag), lb:obj.parser.makeLb(obj.col,obj.tag)}
                 // obj(uiObj) {col:,parser:,tag:,dom:}
                 /*
                 //this.makeTag(sid, eid)
@@ -248,7 +248,13 @@ class UiMaker {
             for (let [eid, uiObj] of s.uiMap) {
                 const obj = this._map.get(sid, eid)
                 if (!obj.hasOwnProperty('parser') || !obj.hasOwnProperty('tag')) { this.makeTag(sid, eid) }
-                obj.dom = {el:obj.parser.makeEl(col,tag), dl:obj.parser.makeDl(col,tag), lb:obj.parser.makeLb(col,tag)}
+                obj.dom = {
+                    el: obj.parser.makeEl(obj.col, obj.tag), 
+                    dl: obj.parser.makeDl(obj.col, obj.tag), 
+                    lb: obj.parser.makeLb(obj.col, obj.tag),
+                }
+                console.log(obj.dom)
+                //obj.dom = {el:obj.parser.makeEl(col,tag), dl:obj.parser.makeDl(col,tag), lb:obj.parser.makeLb(col,tag)}
                 //this._tsv.set(sid, eid, {...obj, parser:parser, tag:tag, dom:dom})
                 // obj(uiObj) = {col:,parser:,tag:,dom:}
             }
@@ -274,6 +280,7 @@ class UiMaker {
             dl: obj.parser.makeDl(obj.col, obj.tag), 
             lb: obj.parser.makeLb(obj.col, obj.tag),
         }
+        console.log(obj.dom.el, obj.parser)
         return obj
     }
     /*
@@ -353,9 +360,12 @@ class TsvTypeParsers {
     makeTag(column) {
         const parser = this.get(column.type)
         const tag = parser.getTag(column.type)
+        console.log(tag)
         if (!Type.isObj(tag)) { throw new Error(`parser.fromType(type)はオブジェクト型を返すべきです。:${typeof tag}: ${obj}`) }
         tag.datalist = ((column.datalist) ? JSON.parse(column.datalist) : null)
-        tag.attrs = ((column.attrs) ? JSON.parse(column.attrs) : ({}))
+//        tag.attrs = ((column.attrs) ? JSON.parse(column.attrs) : ({}))
+//        tag.attrs = {...parser.attrs, ...tag.attrs}
+        tag.attrs = {...tag.attrs, ...((column.attrs) ? JSON.parse(column.attrs) : ({}))}
         tag.attrs.id = `${column.sid.Chain}-${column.eid.Chain}`
         tag.attrs.name = column.eid.Camel
         tag.attrs.placeholder = column.placeholder.replace(/\\n/g, '\n')
@@ -417,11 +427,12 @@ class UiParser {
         this._types = types
         this._tagName = tagName
         this._attrs = attrs
+        if ('button'===types) { console.error(types, tagName, attrs, this._attrs, this.attrs) }
         this._valueKinds = valueKinds
         if (!(Type.isStr(this._types) || Type.isStrs(this._types))) { throw new Error(`typesは文字列かその配列のみ受け付けます。配列の場合は短縮名などを複数指定したい時に指定します。: ${this._types}`) }
     }
     get types() { return this._types }
-    get tagName() { return this._tagName}
+    get tagName() { return this._tagName }
     get attrs() { return this._attrs }
     get valueKinds() { return this._valueKinds }
     match(type) {
@@ -455,8 +466,20 @@ class UiParser {
         throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
     }
     */
-    getTag(type) { return {tagName:'input', attrs:{type:'text'}, children:[]} }
-    makeTag(col, tag) { return tag }
+    //getTag(type) { return {tagName:'input', attrs:{type:'text'}, children:[]} }
+    getTag(type) { return {tagName:this.tagName, attrs:this.attrs, children:[]} }
+//    makeTag(col, tag) { return tag }
+    makeTag(col, tag) { console.log(tag); return tag }
+/*
+    makeTag(col, tag) {
+        console.log(tag.attrs);
+        console.log({...tag.attrs, ...this.attrs});
+        //tag.attrs = {...this.attrs, ...tag.attrs}
+        tag.attrs = {...tag.attrs, ...this.attrs}
+        console.log(tag)
+        return tag
+    }
+    */
     makeEl(col, tag) {
         const el = document.createElement(tag.tagName)
         for (let [k,v] of Object.entries(tag.attrs)) {
@@ -469,7 +492,7 @@ class UiParser {
 //        console.warn('#makeDatalist()', id, type, values)
         if (!tag.datalist) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }
         if (!Type.isArray(tag.datalist)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`); return null }
-        if (('input'===tag.tagName && ['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===tag.attrs.type))) { console.warn(`datalist作成失敗。非対応要素<input type="${type}">のため。`); return null; }
+        if (('input'===tag.tagName && ['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===tag.attrs.type))) { console.warn(`datalist作成失敗。非対応要素<input type="${tag.attrs.type}">のため。`); return null; }
         return van.tags.datalist({id:tag.attrs.list}, tag.datalist.map(v=>van.tags.option({value:v})))
         //return van.tags.datalist({id:id}, values.map(v=>van.tags.option({value:v})))
     }
@@ -533,10 +556,11 @@ class RadioParser extends UiParser {
     }
 }
 class CheckboxParser extends UiParser {
-    constructor(types=['checkbox','check'], tagName='input', attrs='checkbox', valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) }
+    constructor(types=['checkbox','check'], tagName='input', attrs={type:'checkbox'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) }
     makeEl(col, tag) {
         tag.attrs.checked = ['true','1','checked'].some(v=>v===tag.attrs.value)
         tag.attrs.value = null
+        console.log(tag.attrs, col.label)
         return van.tags.label(van.tags.input(tag.attrs), col.label)
     }
 }
