@@ -16,7 +16,7 @@ all-type	week	week	週
 all-type	time	time	時刻				
 all-type	color	color	色				
 all-type	file	file	ファイル				
-all-type	sex	radio	性別		{"male":"男", "female":"女"}		
+all-type	sex	radio	性別		female	{"male":"男", "female":"女"}	
 all-type	isMan	check	人間か		true		
 all-type	editor	div					{"tabindex":0, "contenteditable":true}
 all-type	viewer	div					{"tabindex":0}
@@ -36,7 +36,7 @@ dl-ex	week	week	週			["1999-W52","2000-W01"]
 dl-ex	time	time	時刻			["00:00","23:59"]	
 dl-ex	color	color	色			["#ff0000","#00ff00","#0000ff"]	
 dl-ex	file	file	ファイル			["候補１(無効)","候補２(無効)"]	
-dl-ex	sex	radio	性別		{"male":"男", "female":"女"}		
+dl-ex	sex	radio	性別		female	{"male":"男", "female":"女"}	
 dl-ex	isMan	check	人間か		true		
 dl-ex	editor	div	エディタ				{"tabindex":0, "contenteditable":true}
 dl-ex	viewer	div	ビューア				{"tabindex":0}
@@ -61,7 +61,7 @@ layout	week	week	週
 layout	time	time	時刻				
 layout	color	color	色				
 layout	file	file	ファイル				
-layout	sex	radio	性別		{"male":"男", "female":"女"}		
+layout	sex	radio	性別		female	{"male":"男", "female":"女"}	
 layout	isMan	check	人間か		true		
 layout	editor	div	エディタ				{"tabindex":0, "contenteditable":true}
 layout	viewer	div	ビューア				{"tabindex":0}
@@ -91,6 +91,7 @@ origin-ui	b17	van-button	ボタン17				{"color-scheme":"night"}
 origin-ui	writing-mode	button	書字方向切替				
 `
     const scene = new Scene()
+    scene.Builder.UiMaker.Parsers.add(new VanButtonParser())
     console.log('TSV例 開始-----------------------------')
     console.log(scene.Tsv.get())
     console.log(scene.Tsv.get('ja'))
@@ -103,51 +104,57 @@ origin-ui	writing-mode	button	書字方向切替
     console.log(scene.Tsv.header.get('en'))
     console.log(scene.Tsv.header.get('en',true))
     console.log('TSV例 終了-----------------------------')
+    //scene.Map.add(sid, eid, type, label, placeholder, value, datalist, attrs)
+    //scene.init()
     scene.init(tsv)
-    scene.Map.setAttr('dl-ex', 'viewer', 'style', ()=>`width:100px;height:100px;`)
+    console.log(scene)
+    scene.Builder.setAttr('dl-ex', 'viewer', 'style', ()=>`width:100px;height:100px;`)
     const htmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
-    scene.Map.setChildren('dl-ex', 'viewer', htmls.val)
-    scene.Map.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
-    scene.Map.setChildren('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
-    scene.UiMaker.makeDom('third')
-    scene.Map.setMake('third', (uiMap, sid)=>{
+    scene.Builder.setChildren('dl-ex', 'viewer', htmls.val)
+    //scene.Builder.addChild('dl-ex', 'viewer', htmls.val)
+    scene.Builder.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
+    //scene.Builder.setChildren('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
+    scene.Builder.addChild('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
+    //scene.UiMaker.makeDom('third')
+    scene.Builder.setMake('third', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),
             van.tags.p('任意にデザインした画面です。'),
             scene.MakeHelper.table(uiMap, sid)
     )})
-    scene.Map.setAttr('layout', 'viewer', 'style', ()=>`width:100px;height:100px;`)
+    scene.Builder.setAttr('layout', 'viewer', 'style', ()=>`width:100px;height:100px;`)
     const layoutViewerHtmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
-    scene.Map.setAttr('layout', 'description', 'oninput', (e)=>layoutViewerHtmls.val=e.target.value)
-    scene.Map.setChildren('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
-    scene.Map.setAttr('layout', 'save', 'onclick', (e)=>{const j=scene.Store.get();console.log(j);JsonFile.download(j, 'scenes.json')})
-    scene.Map.setAttr('layout', 'load', 'onclick', (e)=>{
+    scene.Builder.setAttr('layout', 'description', 'oninput', (e)=>layoutViewerHtmls.val=e.target.value)
+    //scene.Builder.setChildren('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
+    scene.Builder.addChild('layout', 'viewer', ()=>van.tags.div(layoutViewerHtmls.val))
+    scene.Builder.setAttr('layout', 'save', 'onclick', (e)=>{const j=scene.Store.get();console.log(j);JsonFile.download(j, 'scenes.json')})
+    scene.Builder.setAttr('layout', 'load', 'onclick', (e)=>{
         const j=scene.Store.get();
         j.layout.sex = 'female'
         console.log(j);
         scene.Store.set(j);
     })
 
-    console.log('doms:', scene.Map.get('layout').uiMap)
-    console.log('doms:', scene.Map.get('layout').uiMap.values())
-    console.log('doms:', Array.from(scene.Map.get('layout').uiMap.values()))
-    console.log('doms:', Array.from(scene.Map.get('layout').uiMap.values()).map(v=>scene.MakeHelper.tag(v.col, v.obj)))
-    console.log('doms:', Array.from(scene.Map.get('layout').uiMap.values()).map(v=>v.dom))
-    console.log(KvTable)
-    scene.Map.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>KvTable.make(uiMap, sid)))
-    scene.Map.setChildren('layout', 'multi-children', [van.tags.h1('複数'),van.tags.p('子要素')])
+    console.log('doms:', scene.Builder.Map.get('layout').uiMap)
+    console.log('doms:', scene.Builder.Map.get('layout').uiMap.values())
+    console.log('doms:', Array.from(scene.Builder.Map.get('layout').uiMap.values()))
+//    console.log('doms:', Array.from(scene.Builder.Map.get('layout').uiMap.values()).map(v=>scene.MakeHelper.tag(v.col, v.obj)))
+//    console.log('doms:', Array.from(scene.Builder.Map.get('layout').uiMap.values()).map(v=>v.dom))
+//    console.log(KvTable)
+    scene.Builder.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>KvTable.make(uiMap, sid)))
+    scene.Builder.setChildren('layout', 'multi-children', [van.tags.h1('複数'),van.tags.p('子要素')])
 
     const displayRows = van.state(`${document.documentElement.clientHeight}px`)
-    scene.Map.setMake('display', (uiMap, sid)=>{
+    scene.Builder.setMake('display', (uiMap, sid)=>{
         return van.tags.div(
             {id:sid, style:()=>`display:grid;grid;grid-template-columns:1fr 1fr;grid-template-rows:${displayRows.val};`}, 
             ...Array.from(uiMap).map(([k,v])=>v.dom.el),
     )})
 
-    scene.Map.setAttr('origin-ui', 'writing-mode', 'onclick', (e)=>Css.set('writing-mode', `${((Css.get('writing-mode').startsWith('vertical')) ? 'horizontal-tb' : 'vertical-rl')}`, scene.Transitioner.nowEl))
-    scene.Map.setAttr('origin-ui', 'b3', 'onpush', (e)=>alert('ボタン３を押した！'))
-    scene.Map.setAttr('origin-ui', 'b3', 'onhold', (e)=>alert('ボタン３を長〜く押した！'))
-    scene.Map.setAttr('origin-ui', 'b12', 'colors', 'yellow,cyan,magenta')
+    scene.Builder.setAttr('origin-ui', 'writing-mode', 'onclick', (e)=>Css.set('writing-mode', `${((Css.get('writing-mode').startsWith('vertical')) ? 'horizontal-tb' : 'vertical-rl')}`, scene.Transitioner.nowEl))
+    scene.Builder.setAttr('origin-ui', 'b3', 'onpush', (e)=>alert('ボタン３を押した！'))
+    scene.Builder.setAttr('origin-ui', 'b3', 'onhold', (e)=>alert('ボタン３を長〜く押した！'))
+    scene.Builder.setAttr('origin-ui', 'b12', 'colors', 'yellow,cyan,magenta')
 
     window.addEventListener('resize', debounce(()=>{KvTable.resize();displayRows.val=document.documentElement.clientHeight;}, 300))
     van.add(document.body, 
