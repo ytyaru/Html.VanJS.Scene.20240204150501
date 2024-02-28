@@ -529,7 +529,7 @@ class RadioParser extends UiParser {
         // [<label><input>]
         // attrsを共用する。複数のラジオボタンで。けどそれは困るのでディープコピーした。
         //return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;return van.tags.label(van.tags.input(att), v);})
-        return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
+        return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
     }
 }
 class CheckboxParser extends UiParser {
@@ -537,7 +537,7 @@ class CheckboxParser extends UiParser {
     makeEl(col, tag) {
         tag.attrs.checked = ['true','1','checked'].some(v=>v===tag.attrs.value)
         tag.attrs.value = null
-        return van.tags.label(van.tags.input(attrs), label)
+        return van.tags.label(van.tags.input(tag.attrs), col.label)
     }
 }
 class ButtonParser extends UiParser { constructor(types='button', tagName='button', attrs={type:'button'}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) } }
@@ -558,7 +558,9 @@ class SelectParser extends UiParser {
     makeEl(col, tag) {
         const el = super.makeEl(col, tag)
         if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
-        el.appendChild(this.#makeOptions(tag.datalist, col.value))
+        console.log(el)
+        //el.appendChild(this.#makeOptions(tag.datalist, col.value))
+        van.add(el, this.#makeOptions(tag.datalist, col.value))
         return el
     }
     #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
@@ -741,21 +743,43 @@ class SceneBuilder {
     margeAttrs(sid, eid, attrs) { this._map.get(sid, eid).tag.attrs[key] = ({...this._map.get(sid, eid).obj.attrs[key], ...attrs}) }
     setMake(sid, fn) {
         this.#makeDoms(sid)
+//        for (let [eid, e] of this._map.get(sid).uiMap) { this.#makeDom(sid, eid, e) }
 //        const firstUiObj = this._map.get(sid).uiMap.entries().next().value
 //        if (!firstUiObj.hasOwnProperty('dom')) { this.UiMaker.makeDom(sid) }
 //        else if (firstUiObj.hasOwnProperty('dom') && !firstUiObj.dom) { this.UiMaker.makeDom(sid) }
         this._map.get(sid).make = fn
     }
-    makeAll() { return Array.from(this._map.keys()).map(sid=>this.make(sid)) }
+    makeAll() {
+        const scenes = []
+        for (let [sid, s] of this._map.get()) {
+            for (let [eid, e] of s.uiMap) {
+                this.#makeDom(sid, eid, e)
+            }
+            const scene = ((Type.isFunction(s.make)) ? s.make(s.uiMap, sid) : SceneMakeHelper.table(s.uiMap, sid))
+            scene.dataset.sceneId = sid
+            scenes.push(scene)
+        }
+        return scenes
+    }
+    #makeDoms(sid) { for (let [eid, e] of this._map.get(sid).uiMap) { this.#makeDom(sid, eid, e) } }
+    #makeDom(sid, eid, e) {
+        if (!e.hasOwnProperty('dom')) { this.UiMaker.makeDom(sid, eid) }
+        else if (e.hasOwnProperty('dom') && !e.dom) { this.UiMaker.makeDom(sid, eid) }
+    }
+
+    /*
+    makeAll() { return Array.from(this._map.get().keys()).map(sid=>this.make(sid)) }
     make(sid) {
         const s = this._map.get(sid)
         const m = s.make
-        this.#makeDom(sid)
+        this.#makeDoms(sid)
         const scene = ((Type.isFunction(m)) ? m(s.uiMap, sid) : SceneMakeHelper.table(s.uiMap, sid))
         scene.dataset.sceneId = sid
+        return scene
 //        if (Type.isFunction(m)) { return m(s.uiMap, sid) }
 //        //return this.#makeTable(s.uiMap, sid)
 //        return SceneMakeHelper.table(s.uiMap, sid)
+//        return ((Type.isFunction(m)) ? m(s.uiMap, sid) : SceneMakeHelper.table(s.uiMap, sid))
     }
     #makeDoms(sid) {
         for (let [eid, e] of this._map.get(sid).uiMap) {
@@ -768,6 +792,7 @@ class SceneBuilder {
         if (!firstUiObj.hasOwnProperty('dom')) { this.UiMaker.makeDom(sid) }
         else if (firstUiObj.hasOwnProperty('dom') && !firstUiObj.dom) { this.UiMaker.makeDom(sid) }
     }
+    */
     //getEl(sid) { return document.querySelector(`*[data-scene-id="${sid}"]`) }
     getEl(sid) {
         if (sid) { return document.querySelector(`*[data-scene-id="${sid}"]`) }

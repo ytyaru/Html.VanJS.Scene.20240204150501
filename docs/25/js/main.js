@@ -141,7 +141,8 @@ origin-ui	writing-mode	button	書字方向切替
 //    console.log('doms:', Array.from(scene.Builder.Map.get('layout').uiMap.values()).map(v=>scene.MakeHelper.tag(v.col, v.obj)))
 //    console.log('doms:', Array.from(scene.Builder.Map.get('layout').uiMap.values()).map(v=>v.dom))
 //    console.log(KvTable)
-    scene.Builder.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>KvTable.make(uiMap, sid)))
+    //scene.Builder.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>KvTable.make(uiMap, sid)))
+    scene.Builder.setMake('layout', (uiMap, sid)=>van.tags.div({id:sid}, ()=>scene.MakeHelper.table(uiMap, sid)))
     scene.Builder.setChildren('layout', 'multi-children', [van.tags.h1('複数'),van.tags.p('子要素')])
 
     const displayRows = van.state(`${document.documentElement.clientHeight}px`)
