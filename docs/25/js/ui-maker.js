@@ -377,7 +377,12 @@ class TsvTypeParsers {
     }
     #setValue(column, tag, parser) {
         if ('input'===tag.tagName && 'file'===tag.attrs.type || UiParser.ValueKinds.None===parser.valueKind) { return }
-        else if (this.#isButton(tag.tagName, tag.attrs) || UiParser.ValueKinds.ButtonLike===parser.valueKind) { tag.attrs.value = this.#newLine((column.value || column.label || '')) }
+        //else if (this.#isButton(tag.tagName, tag.attrs) || UiParser.ValueKinds.ButtonLike===parser.valueKind) { tag.attrs.value = this.#newLine((column.value || column.label || '')) }
+        else if (this.#isButton(tag.tagName, tag.attrs) || UiParser.ValueKinds.ButtonLike===parser.valueKind) {
+            const v = this.#newLine((column.value || column.label || ''))
+            tag.attrs.value = v
+            tag.children.push(v)
+        }
         else if (tag.attrs.hasOwnProperty('contenteditable') || UiParser.ValueKinds.Children===parser.valueKind) { tag.children = this.#newLine(column.value) }
         tag.attrs.value = this.#newLine(column.value)
     }
@@ -480,7 +485,19 @@ class UiParser {
         return tag
     }
     */
-    makeEl(col, tag) {
+    makeEl(col, tag) { return ((this.#hasVanTags(tag)) ? this.#makeElVan(tag) : this.#makeElStd(tag)) }
+    #hasVanTags(tag) { return (van.tags.hasOwnProperty(tag.tagName) && Type.isFn(van.tags[tag.tagName])) }
+    //#makeElVan(tag) { return van.tags[tag.tagName](tag.attrs, ...tag.children) } // なぜか子要素を追加すると、画面遷移ボタンを押したら無限ループする…
+    #makeElVan(tag) { console.log(tag.children);return van.tags[tag.tagName](tag.attrs) }
+    /*
+    #makeElVan(tag) {
+        console.log(tag.children)
+        if (Type.isAry(tag.children) && 0 < tag.children.length) {
+            return van.tags[tag.tagName](tag.attrs, ...tag.children)
+        } else { return van.tags[tag.tagName](tag.attrs) }
+    }
+    */
+    #makeElStd(tag) {
         const el = document.createElement(tag.tagName)
         for (let [k,v] of Object.entries(tag.attrs)) {
             if (el.hasOwnProperty(k)) { el[k] = v }
@@ -488,6 +505,17 @@ class UiParser {
         }
         return el
     }
+    /*
+    makeEl(col, tag) {
+        const el = document.createElement(tag.tagName)
+        for (let [k,v] of Object.entries(tag.attrs)) {
+            if (el.hasOwnProperty(k)) { el[k] = v }
+            else { el.setAttribute(k, v) }
+        }
+//        van.add(el, ...tag.children)
+        return el
+    }
+    */
     makeDl(col, tag) {
 //        console.warn('#makeDatalist()', id, type, values)
         if (!tag.datalist) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }

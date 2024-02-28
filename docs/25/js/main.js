@@ -157,7 +157,8 @@ origin-ui	writing-mode	button	書字方向切替
     scene.Builder.setAttr('origin-ui', 'b3', 'onhold', (e)=>alert('ボタン３を長〜く押した！'))
     scene.Builder.setAttr('origin-ui', 'b12', 'colors', 'yellow,cyan,magenta')
 
-    window.addEventListener('resize', debounce(()=>{KvTable.resize();displayRows.val=document.documentElement.clientHeight;}, 300))
+    //window.addEventListener('resize', debounce(()=>{KvTable.resize();displayRows.val=document.documentElement.clientHeight;}, 300))
+    window.addEventListener('resize', debounce(()=>{/*KvTable.resize();*/displayRows.val=document.documentElement.clientHeight;}, 300))
     van.add(document.body, 
         van.tags.button({onclick:e=>scene.Transitioner.move()},'画面遷移'),
         van.tags.button({onclick:e=>scene.Transitioner.first()},'最初の画面へ遷移'),
