@@ -558,8 +558,8 @@ class SelectParser extends UiParser {
     constructor(types='select', tagName='select', attrs={}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) }
     makeEl(col, tag) {
         const el = super.makeEl(col, tag)
-        if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
-        console.log(el)
+        if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素がありませんが、空のselect要素を作成します。option設定はTSVのdatalist列にJSONを指定してください。値は{"opt-val-1":"label-1", "optgroup-label-2":{"opt-val-2-1":"label-2-1"}}のようにしてください。これは<option value="opt-val-1">label-1</option><optgroup label="optgroup-label-2"><option value="opt-val-2-1">label-2-1</option></optgroup>のようになります。`); return el; }
+        //console.log(el)
         //el.appendChild(this.#makeOptions(tag.datalist, col.value))
         van.add(el, this.#makeOptions(tag.datalist, col.value))
         return el
