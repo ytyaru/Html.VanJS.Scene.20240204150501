@@ -144,6 +144,7 @@ class TsvTypeParsers {
 }
 */
 class SceneMakeHelper {
+    /*
     static table(uiMap, sid) {
         return van.tags.table({id:sid},
             van.tags.caption(sid),
@@ -154,6 +155,18 @@ class SceneMakeHelper {
         )
     }
 //    static tag(col, obj) { return Tag.make(col, obj) }
+    */
+    static table(uiMap, sid) {
+//        console.error(sid, uiMap)
+        return van.tags.table(
+        //return van.tags.table({id:sid},
+            van.tags.caption(sid),
+            Array.from(uiMap.entries()).map(([eid, e])=>{
+                return van.tags.tr(van.tags.th(e.col.label), van.tags.td(e.dom.el, e.dom.dl))
+            })
+        )
+    }
+
 }
 
 /*
@@ -372,6 +385,7 @@ class TsvTypeParsers {
         tag.attrs['data-sid'] = column.sid.Chain
         tag.attrs['data-eid'] = column.eid.Chain
         this.#setValue(column, tag, parser)
+        this.#setList(tag)
         return parser.makeTag(column, tag)
     }
     #setValue(column, tag, parser) {
@@ -386,6 +400,17 @@ class TsvTypeParsers {
     }
     #isButton(tagName, attrs) { return ('button'===tagName || ('input'===tagName && 'button,submit,reset,image'.split(',').some(a=>a===attrs.type))) }
     #newLine(str) { return str.replace(/\\n/g, '\n') }
+    #setList(tag) {
+        if (!tag.datalist) { return }
+        if ('input'!==tag.tagName) { return }
+        if ('hidden,password,checkbox,radio'.split(',').some(v=>v===tag.attrs.type)) { return }
+        tag.attrs.list = `${tag.attrs['data-sid']}-${tag.attrs['data-eid']}-list`
+//        console.error(tag)
+//        if (this.#isButton(tag.tagName, tag.attrs)) { return }
+//        if ('input'===tag.tagName && 'hidden,password,checkbox,radio'.split(',').some(v=>v===tag.attrs.type)) { return }
+//        tag.attrs.list = `${tag.attrs['data-sid']}-${tag.attrs['data-eid']}-list`
+//        console.error(tag)
+    }
     makeEl(col, tag) {
         const parser = this.get(col.type)
         return parser.makeEl(col, tag)
@@ -468,9 +493,12 @@ class UiParser {
         return el
     }
     makeDl(col, tag) {
-        if (!tag.datalist) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }
-        if (!Type.isArray(tag.datalist)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`); return null }
-        if (('input'===tag.tagName && ['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===tag.attrs.type))) { console.warn(`datalist作成失敗。非対応要素<input type="${tag.attrs.type}">のため。`); return null; }
+        const types = 'text,search,url,tel,email,number,month,week,date,time,datetime,datetime-local,range,color,password'.split(',')
+        //if (!tag.datalist) { console.warn(`datalistのデータが存在しないので作成を中断しました。`, col, tag); return null }
+        if (!tag.datalist) { return null }
+        if ('select'===tag.tagName || ('input'===tag.tagName && 'radio'===tag.attrs.type)) { return } // TSVのdatalist列に候補値をセットするが、それぞれoptionやvalueの値であってdatalistではないため対象外
+        if (!('input'===tag.tagName && types.some(t=>t===tag.attrs.type))) { console.warn(`datalist非対応要素のため作成しません。対応しているのはinput要素のうちtypeが${types}のいずれかのみです。: ${tag.tagName} ${tag.attrs.type}`); return null; }
+        if (!Type.isArray(tag.datalist)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`, col, tag); return null }
         return van.tags.datalist({id:tag.attrs.list}, tag.datalist.map(v=>van.tags.option({value:v})))
     }
     makeLb(col, tag) {
@@ -529,7 +557,7 @@ class RadioParser extends UiParser {
         // [<label><input>]
         // attrsを共用する。複数のラジオボタンで。けどそれは困るのでディープコピーした。
         //return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;return van.tags.label(van.tags.input(att), v);})
-        console.error(valueLabelObj, col.value)
+        //console.error(valueLabelObj, col.value)
         
         return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.name=`${att['data-sid']}-${att['data-eid']}-${k}`;att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
         //return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
