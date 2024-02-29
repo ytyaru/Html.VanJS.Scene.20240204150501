@@ -146,7 +146,6 @@ origin-ui	writing-mode	button	書字方向切替
     scene.Builder.setChildren('dl-ex', 'viewer', [()=>van.tags.div(htmls.val)])
     //scene.UiMaker.makeDom('third')
 
-    /*
     scene.Builder.setMake('third', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),
@@ -190,6 +189,7 @@ origin-ui	writing-mode	button	書字方向切替
 
     //window.addEventListener('resize', debounce(()=>{KvTable.resize();displayRows.val=document.documentElement.clientHeight;}, 300))
     window.addEventListener('resize', debounce(()=>{displayRows.val=document.documentElement.clientHeight;}, 300))
+    /*
     */
     van.add(document.body, 
         van.tags.button({onclick:e=>scene.Transitioner.move()},'画面遷移'),
