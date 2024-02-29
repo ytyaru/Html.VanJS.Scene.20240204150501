@@ -1,5 +1,5 @@
 class VanButtonParser extends UiParser {
-    constructor(types='van-button', tagName='van-button', attrs={}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) }
+    constructor(types='van-button', tagName='van-button', attrs={}, valueKind=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKind) }
 //    match(type, v) { return super.match(type, 'van-button') }
 //    getTag(type) { return {tagName:'van-button', attrs:{}} }
     makeTag(col, tag) {
@@ -11,7 +11,7 @@ class VanButtonParser extends UiParser {
         }
         return tag
     }
-    make(col, tag) { // UiParser.make(col,tag)では
+    makeEl(col, tag) { // UiParser.make(col,tag)では
         const el = document.createElement('van-button')
         const ATTRS = Array.from(Object.entries(tag.attrs))
         const KEYS = Array.from(Object.keys(tag.attrs))

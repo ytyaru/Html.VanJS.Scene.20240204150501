@@ -1,4 +1,26 @@
 window.addEventListener('DOMContentLoaded', (event) => {
+    /*
+    const tsv = `画面ID	要素ID	type	label	placeholder	value,min,max,step	datalist	attrs
+all-type	description	textarea	説明	説明。			
+dl-ex	description	textarea	説明	説明。		["候補１(無効)","候補２(無効)"]	
+dl-ex	viewer	div	ビューア				{"tabindex":0}
+`
+    const scene = new Scene()
+    scene.Builder.UiMaker.Parsers.add(new VanButtonParser())
+    scene.init(tsv)
+    scene.Builder.setAttr('dl-ex', 'viewer', 'style', ()=>`width:100px;height:100px;`)
+    const htmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
+    scene.Builder.setChildren('dl-ex', 'viewer', htmls.val)
+    scene.Builder.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
+
+    window.addEventListener('resize', debounce(()=>{displayRows.val=document.documentElement.clientHeight;}, 300))
+    van.add(document.body, 
+        van.tags.button({onclick:e=>scene.Transitioner.move()},'画面遷移'),
+        van.tags.button({onclick:e=>scene.Transitioner.first()},'最初の画面へ遷移'),
+        van.tags.button({onclick:e=>scene.Transitioner.last()},'最後の画面へ遷移'),
+    )
+    scene.addBody()
+*/
     const tsv = `画面ID	要素ID	type	label	placeholder	value,min,max,step	datalist	attrs
 all-type	description	textarea	説明	説明。			
 all-type	category	select	カテゴリ		key2	{"key1":"label-1", "groupValue":{"key2":"label-2"}}	
@@ -90,6 +112,11 @@ origin-ui	b16	van-button	ボタン16				{"night":true}
 origin-ui	b17	van-button	ボタン17				{"color-scheme":"night"}
 origin-ui	writing-mode	button	書字方向切替				
 `
+/*
+*/
+
+
+
     const scene = new Scene()
     scene.Builder.UiMaker.Parsers.add(new VanButtonParser())
     console.log('TSV例 開始-----------------------------')
@@ -110,12 +137,16 @@ origin-ui	writing-mode	button	書字方向切替
     console.log(scene)
     scene.Builder.setAttr('dl-ex', 'viewer', 'style', ()=>`width:100px;height:100px;`)
     const htmls = van.state([van.tags.p('テキスト一行目'), van.tags.p('二行目')])
-    scene.Builder.setChildren('dl-ex', 'viewer', htmls.val)
+    scene.Builder.setChildren('dl-ex', 'viewer', [htmls.val])
+    //scene.Builder.setChildren('dl-ex', 'viewer', htmls.val) // 無限ループになる
     //scene.Builder.addChild('dl-ex', 'viewer', htmls.val)
     scene.Builder.setAttr('dl-ex', 'description', 'oninput', (e)=>htmls.val=e.target.value)
     //scene.Builder.setChildren('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
-    scene.Builder.addChild('dl-ex', 'viewer', ()=>van.tags.div(htmls.val))
+    //scene.Builder.addChild('dl-ex', 'viewer', ()=>van.tags.div(htmls.val)) // 無限ループになる
+    scene.Builder.setChildren('dl-ex', 'viewer', [()=>van.tags.div(htmls.val)])
     //scene.UiMaker.makeDom('third')
+
+    /*
     scene.Builder.setMake('third', (uiMap, sid)=>{
         return van.tags.div({id:sid},
             van.tags.h1(sid),
@@ -158,13 +189,16 @@ origin-ui	writing-mode	button	書字方向切替
     scene.Builder.setAttr('origin-ui', 'b12', 'colors', 'yellow,cyan,magenta')
 
     //window.addEventListener('resize', debounce(()=>{KvTable.resize();displayRows.val=document.documentElement.clientHeight;}, 300))
-    window.addEventListener('resize', debounce(()=>{/*KvTable.resize();*/displayRows.val=document.documentElement.clientHeight;}, 300))
+    window.addEventListener('resize', debounce(()=>{displayRows.val=document.documentElement.clientHeight;}, 300))
+    */
     van.add(document.body, 
         van.tags.button({onclick:e=>scene.Transitioner.move()},'画面遷移'),
         van.tags.button({onclick:e=>scene.Transitioner.first()},'最初の画面へ遷移'),
         van.tags.button({onclick:e=>scene.Transitioner.last()},'最後の画面へ遷移'),
     )
     scene.addBody()
+/*
+    */
 });
 window.addEventListener('beforeunload', (event) => {
     console.log('beforeunload!!');

@@ -147,7 +147,7 @@ class HTMLVanButtonElement extends HTMLElement {
     set night(v) { this.colorScheme = 'night' }
     set colorScheme(v) {
         if (this.constructor.ColorSchemes.hasOwnProperty(v)) {
-            console.error('colorScheme():', v, this.id)
+            //console.error('colorScheme():', v, this.id)
             this._colorScheme = this.constructor.ColorSchemes[v]
             this.#setStyleFree()
         }

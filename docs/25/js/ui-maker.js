@@ -270,7 +270,8 @@ class UiMaker {
         obj.tag = tag
         //this._tsv.set(sid, eid, {...obj, parser:parser, tag:tag})
         // {col:, tag:, parser:, dom:}
-        return obj
+        //return obj
+        return obj.tag
     }
     makeDom(sid, eid) {
         const obj = this._map.get(sid, eid)
@@ -281,7 +282,8 @@ class UiMaker {
             lb: obj.parser.makeLb(obj.col, obj.tag),
         }
         console.log(obj.dom.el, obj.parser)
-        return obj
+        //return obj
+        return obj.dom
     }
     /*
     setAttr(sid, eid, key, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.attrs[key] = value } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }  }
@@ -363,8 +365,6 @@ class TsvTypeParsers {
         console.log(tag)
         if (!Type.isObj(tag)) { throw new Error(`parser.fromType(type)はオブジェクト型を返すべきです。:${typeof tag}: ${obj}`) }
         tag.datalist = ((column.datalist) ? JSON.parse(column.datalist) : null)
-//        tag.attrs = ((column.attrs) ? JSON.parse(column.attrs) : ({}))
-//        tag.attrs = {...parser.attrs, ...tag.attrs}
         tag.attrs = {...tag.attrs, ...((column.attrs) ? JSON.parse(column.attrs) : ({}))}
         tag.attrs.id = `${column.sid.Chain}-${column.eid.Chain}`
         tag.attrs.name = column.eid.Camel
@@ -372,12 +372,10 @@ class TsvTypeParsers {
         tag.attrs['data-sid'] = column.sid.Chain
         tag.attrs['data-eid'] = column.eid.Chain
         this.#setValue(column, tag, parser)
-        if (tag.hasOwnProperty('children')) { tag.children = [] }
         return parser.makeTag(column, tag)
     }
     #setValue(column, tag, parser) {
         if ('input'===tag.tagName && 'file'===tag.attrs.type || UiParser.ValueKinds.None===parser.valueKind) { return }
-        //else if (this.#isButton(tag.tagName, tag.attrs) || UiParser.ValueKinds.ButtonLike===parser.valueKind) { tag.attrs.value = this.#newLine((column.value || column.label || '')) }
         else if (this.#isButton(tag.tagName, tag.attrs) || UiParser.ValueKinds.ButtonLike===parser.valueKind) {
             const v = this.#newLine((column.value || column.label || ''))
             tag.attrs.value = v
@@ -428,18 +426,17 @@ class UiParser {
         'ButtonLike': 2,
         'Children': 3,
     }
-    constructor(types, tagName, attrs, valueKinds=UiParser.ValueKinds.Attr) {
+    constructor(types, tagName, attrs, valueKind=UiParser.ValueKinds.Attr) {
         this._types = types
         this._tagName = tagName
         this._attrs = attrs
-        if ('button'===types) { console.error(types, tagName, attrs, this._attrs, this.attrs) }
-        this._valueKinds = valueKinds
+        this._valueKind = valueKind
         if (!(Type.isStr(this._types) || Type.isStrs(this._types))) { throw new Error(`typesは文字列かその配列のみ受け付けます。配列の場合は短縮名などを複数指定したい時に指定します。: ${this._types}`) }
     }
     get types() { return this._types }
     get tagName() { return this._tagName }
     get attrs() { return this._attrs }
-    get valueKinds() { return this._valueKinds }
+    get valueKind() { return this._valueKind }
     match(type) {
              if (Type.isStr (type) && Type.isStr (this._types)) { return this._types===type }
         else if (Type.isStr (type) && Type.isStrs(this._types)) { return this._types.some(t=>t===type) }
@@ -455,74 +452,26 @@ class UiParser {
         throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
 
     }
-    /*
-    match(type, v) {
-             if (Type.isStr (type) && Type.isStr (v)) { return v===type }
-        else if (Type.isStr (type) && Type.isStrs(v)) { return v.map(_=>_===type) }
-        else if (Type.isStrs(type) && Type.isStr (v)) { return type.some(t=>t===v) }
-        else if (Type.isStrs(type) && Type.isStrs(v)) {
-            for (let typ of type) {
-                for (let _ of v) {
-                    if (_===typ) { return true }
-                }
-            }
-            return false
-        }
-        throw new Error(`引数typeは文字列または文字列の配列であるべきです。:${typeof type}: ${type}`)
-    }
-    */
-    //getTag(type) { return {tagName:'input', attrs:{type:'text'}, children:[]} }
     getTag(type) { return {tagName:this.tagName, attrs:this.attrs, children:[]} }
-//    makeTag(col, tag) { return tag }
     makeTag(col, tag) { console.log(tag); return tag }
-/*
-    makeTag(col, tag) {
-        console.log(tag.attrs);
-        console.log({...tag.attrs, ...this.attrs});
-        //tag.attrs = {...this.attrs, ...tag.attrs}
-        tag.attrs = {...tag.attrs, ...this.attrs}
-        console.log(tag)
-        return tag
-    }
-    */
     makeEl(col, tag) { return ((this.#hasVanTags(tag)) ? this.#makeElVan(tag) : this.#makeElStd(tag)) }
     #hasVanTags(tag) { return (van.tags.hasOwnProperty(tag.tagName) && Type.isFn(van.tags[tag.tagName])) }
-    //#makeElVan(tag) { return van.tags[tag.tagName](tag.attrs, ...tag.children) } // なぜか子要素を追加すると、画面遷移ボタンを押したら無限ループする…
-    #makeElVan(tag) { console.log(tag.children);return van.tags[tag.tagName](tag.attrs) }
-    /*
-    #makeElVan(tag) {
-        console.log(tag.children)
-        if (Type.isAry(tag.children) && 0 < tag.children.length) {
-            return van.tags[tag.tagName](tag.attrs, ...tag.children)
-        } else { return van.tags[tag.tagName](tag.attrs) }
-    }
-    */
+    #makeElVan(tag) { return van.tags[tag.tagName](tag.attrs, tag.children) }
     #makeElStd(tag) {
         const el = document.createElement(tag.tagName)
         for (let [k,v] of Object.entries(tag.attrs)) {
             if (el.hasOwnProperty(k)) { el[k] = v }
             else { el.setAttribute(k, v) }
         }
+        
+        el.append(...tag.children)
         return el
     }
-    /*
-    makeEl(col, tag) {
-        const el = document.createElement(tag.tagName)
-        for (let [k,v] of Object.entries(tag.attrs)) {
-            if (el.hasOwnProperty(k)) { el[k] = v }
-            else { el.setAttribute(k, v) }
-        }
-//        van.add(el, ...tag.children)
-        return el
-    }
-    */
     makeDl(col, tag) {
-//        console.warn('#makeDatalist()', id, type, values)
         if (!tag.datalist) { console.warn(`datalistのデータが存在しないので作成を中断しました。`); return null }
         if (!Type.isArray(tag.datalist)) { console.warn(`datalistのデータが配列でないので作成を中断しました。`); return null }
         if (('input'===tag.tagName && ['text','search','url','tel','email','number','month','week','date','time','datetime','datetime-local','range','color','password'].some(v=>v===tag.attrs.type))) { console.warn(`datalist作成失敗。非対応要素<input type="${tag.attrs.type}">のため。`); return null; }
         return van.tags.datalist({id:tag.attrs.list}, tag.datalist.map(v=>van.tags.option({value:v})))
-        //return van.tags.datalist({id:id}, values.map(v=>van.tags.option({value:v})))
     }
     makeLb(col, tag) {
         const attrs = (('input'===tag.tagName && ['radio','checkbox'].some(v=>v===tag.attrs.type)) ? ({}) : ({for:tag.attrs.id}))
@@ -546,13 +495,13 @@ Object.defineProperty(UiParser, 'ValueKinds', {
 */
 
 
-class TextParser extends UiParser { constructor(types='text', tagName='input', attrs={type:'text'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class UrlParser extends UiParser { constructor(types='url', tagName='input', attrs={type:'url'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class TelParser extends UiParser { constructor(types='tel', tagName='input', attrs={type:'tel'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class SearchParser extends UiParser { constructor(types='search', tagName='input', attrs={type:'search'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class PasswordParser extends UiParser { constructor(types='password', tagName='input', attrs={type:'password'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
+class TextParser extends UiParser { constructor(types='text', tagName='input', attrs={type:'text'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class UrlParser extends UiParser { constructor(types='url', tagName='input', attrs={type:'url'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class TelParser extends UiParser { constructor(types='tel', tagName='input', attrs={type:'tel'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class SearchParser extends UiParser { constructor(types='search', tagName='input', attrs={type:'search'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class PasswordParser extends UiParser { constructor(types='password', tagName='input', attrs={type:'password'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
 class NumberParser extends UiParser {
-    constructor(types='number',tagName='input',attrs={type:'number'},valueKinds=UiParser.ValueKinds.Attr) { super(types,tagName,attrs,valueKinds) }
+    constructor(types='number',tagName='input',attrs={type:'number'},valueKind=UiParser.ValueKinds.Attr) { super(types,tagName,attrs,valueKind) }
     makeTag(col, tag) {
         tag = super.makeTag(col, tag)
         const [value, min, max, step] = col.value.split(',')
@@ -564,16 +513,16 @@ class NumberParser extends UiParser {
         return tag
     }
 }
-class RangeParser extends NumberParser { constructor(types='range', tagName='input', attrs={type:'range'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class DateTimeParser extends UiParser { constructor(types=['datetime-local','datetime'], tagName='input', attrs={type:'datetime-local'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class DateParser extends UiParser { constructor(types='date', tagName='input', attrs={type:'date'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class TimeParser extends UiParser { constructor(types='time', tagName='input', attrs={type:'time'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class MonthParser extends UiParser { constructor(types='month', tagName='input', attrs={type:'month'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class WeekParser extends UiParser { constructor(types='week', tagName='input', attrs={type:'week'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class ColorParser extends UiParser { constructor(types='color', tagName='input', attrs={type:'color'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
-class FileParser extends UiParser { constructor(types='file', tagName='input', attrs={type:'file'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
+class RangeParser extends NumberParser { constructor(types='range', tagName='input', attrs={type:'range'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class DateTimeParser extends UiParser { constructor(types=['datetime-local','datetime'], tagName='input', attrs={type:'datetime-local'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class DateParser extends UiParser { constructor(types='date', tagName='input', attrs={type:'date'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class TimeParser extends UiParser { constructor(types='time', tagName='input', attrs={type:'time'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class MonthParser extends UiParser { constructor(types='month', tagName='input', attrs={type:'month'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class WeekParser extends UiParser { constructor(types='week', tagName='input', attrs={type:'week'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class ColorParser extends UiParser { constructor(types='color', tagName='input', attrs={type:'color'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
+class FileParser extends UiParser { constructor(types='file', tagName='input', attrs={type:'file'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
 class RadioParser extends UiParser {
-    constructor(types='radio', tagName='input', attrs={type:'radio'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) }
+    constructor(types='radio', tagName='input', attrs={type:'radio'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) }
     makeEl(col, tag) {
         console.log(col.datalist)
         const valueLabelObj = JSON.parse(col.datalist)
@@ -584,7 +533,7 @@ class RadioParser extends UiParser {
     }
 }
 class CheckboxParser extends UiParser {
-    constructor(types=['checkbox','check'], tagName='input', attrs={type:'checkbox'}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) }
+    constructor(types=['checkbox','check'], tagName='input', attrs={type:'checkbox'}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) }
     makeEl(col, tag) {
         tag.attrs.checked = ['true','1','checked'].some(v=>v===tag.attrs.value)
         tag.attrs.value = null
@@ -592,11 +541,11 @@ class CheckboxParser extends UiParser {
         return van.tags.label(van.tags.input(tag.attrs), col.label)
     }
 }
-class ButtonParser extends UiParser { constructor(types='button', tagName='button', attrs={type:'button'}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) } }
-class SubmitButtonParser extends UiParser { constructor(types='submit', tagName='button', attrs={type:'submit'}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) } }
-class ResetButtonParser extends UiParser { constructor(types='reset', tagName='button', attrs={type:'reset'}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) } }
+class ButtonParser extends UiParser { constructor(types='button', tagName='button', attrs={type:'button'}, valueKind=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKind) } }
+class SubmitButtonParser extends UiParser { constructor(types='submit', tagName='button', attrs={type:'submit'}, valueKind=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKind) } }
+class ResetButtonParser extends UiParser { constructor(types='reset', tagName='button', attrs={type:'reset'}, valueKind=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKind) } }
 class ImageButtonParser extends UiParser {
-    constructor(types='image', tagName='button', attrs={type:'image'}, valueKinds=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKinds) }
+    constructor(types='image', tagName='button', attrs={type:'image'}, valueKind=UiParser.ValueKinds.ButtonLike) { super(types, tagName, attrs, valueKind) }
     makeEl(col, tag) {
         const el = super.makeEl(col, tag)
         const img = document.createElement('img')
@@ -606,7 +555,7 @@ class ImageButtonParser extends UiParser {
     }
 }
 class SelectParser extends UiParser {
-    constructor(types='select', tagName='select', attrs={}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) }
+    constructor(types='select', tagName='select', attrs={}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) }
     makeEl(col, tag) {
         const el = super.makeEl(col, tag)
         if (!Type.isObj(tag.datalist)) { console.warn(`select要素のoption要素作成を中断します。datalistがObject型でなかったためです。値は次のようにしてください。:{"opt-val":"label-1", "optgroup-label-2":{"opt-val":"label-2-1"}}`); return }
@@ -618,7 +567,7 @@ class SelectParser extends UiParser {
     #makeOptionGroup(label, valueLabelObj, value) { console.log(label, valueLabelObj);return van.tags.optgroup({label:label}, this.#makeOptions(valueLabelObj, value)) }
     #makeOptions(valueLabelObj, value) { console.log(valueLabelObj, value); return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{console.log(k,v,value);return ((Type.isStr(v)) ? van.tags.option({value:k, selected:(k===value)}, v) : this.#makeOptionGroup(k, v, value))}) }
 }
-class TextareaParser extends UiParser { constructor(types=['textarea','area'], tagName='textarea', attrs={}, valueKinds=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKinds) } }
+class TextareaParser extends UiParser { constructor(types=['textarea','area'], tagName='textarea', attrs={}, valueKind=UiParser.ValueKinds.Attr) { super(types, tagName, attrs, valueKind) } }
 /*
 class TextParser extends UiParser {
     constructor() { super() }
@@ -786,7 +735,7 @@ class SceneBuilder {
     }
     //addChild(sid, eid, value) { if (this._map.has(sid, eid)) { this._map.get(sid, eid).tag.children.push(value) } else { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) } } 
     addChild(sid, eid, child) {
-        if (!(Type.isEl(child) || Type.isFn(child))) { throw new Error(`addChildの第三引数はHTML要素またはそれを返す関数であるべきです。:${typeof value}, ${value}`) }
+        if (!(Type.isEl(child) || Type.isFn(child) || Type.isStr(child))) { throw new Error(`addChildの第三引数はHTML要素、それを返す関数、文字列のいずれかであるべきです。:${typeof value}, ${value}`) }
         if (!this._map.has(sid, eid)) { throw new Error(`存在しないキーです。:sid:${sid}, eid:${eid}`) }
         console.log(this._map.get(sid, eid).tag)
         this._map.get(sid, eid).tag.children.push(child)
@@ -815,8 +764,10 @@ class SceneBuilder {
     }
     #makeDoms(sid) { for (let [eid, e] of this._map.get(sid).uiMap) { this.#makeDom(sid, eid, e) } }
     #makeDom(sid, eid, e) {
-        if (!e.hasOwnProperty('dom')) { this.UiMaker.makeDom(sid, eid) }
-        else if (e.hasOwnProperty('dom') && !e.dom) { this.UiMaker.makeDom(sid, eid) }
+        console.log(sid, eid, e)
+        if (!e.hasOwnProperty('dom')) { e.dom = this.UiMaker.makeDom(sid, eid) }
+        else if (e.hasOwnProperty('dom') && !e.dom) { e.dom = this.UiMaker.makeDom(sid, eid) }
+        console.log(sid, eid, e)
     }
 
     /*
