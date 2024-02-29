@@ -529,7 +529,10 @@ class RadioParser extends UiParser {
         // [<label><input>]
         // attrsを共用する。複数のラジオボタンで。けどそれは困るのでディープコピーした。
         //return Array.from(Object.entries(values)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;return van.tags.label(van.tags.input(att), v);})
-        return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
+        console.error(valueLabelObj, col.value)
+        
+        return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.name=`${att['data-sid']}-${att['data-eid']}-${k}`;att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
+        //return Array.from(Object.entries(valueLabelObj)).map(([k,v])=>{const att=JSON.parse(JSON.stringify(tag.attrs));console.log(k,v,att.id);att.value=k;att.id+='-'+k.Chain;att.checked=(col.value===k);return van.tags.label(van.tags.input(att), v);})
     }
 }
 class CheckboxParser extends UiParser {
