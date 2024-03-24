@@ -26,7 +26,7 @@ em {
 }
 
 </style>
-<script src="../lib/van/1.2.6/nomodule.min.js"></script>
+<script src="lib/van/1.2.6/nomodule.min.js"></script>
 <script src="js/footer.js"></script>
 <script>
 const {h1,p,br,ol,li,footer,small,time,a,img} = van.tags
@@ -34,6 +34,8 @@ window.addEventListener('DOMContentLoaded', async(event) => {
     // 最新版ほどitemsの先頭に配置する。旧版ほど末尾。
     const items = [
         //'予定：JSONから入力値に設定するメソッドを追加した。JSONファイルDnD機能追加。',
+        'クリーンアップ＆KvTable作成＆Storeバグ修正＆RadioButtonのname属性にeid含めていたバグ修正',
+        'ボタン子要素の無限ループとボタンテキスト非設定を解決した。オプションなしセレクト作成可。ラジオ初期値設定した。datalist,list属性値を正しく設定し生成した。',
         'VanButtonクラス名を他の要素に倣ってHTMLVanButtonElementに改名した。TSVからUI生成する拡張構文追加機構を仮作成した。',
         'van-buttonのcolor-scheme属性値がセットされないバグ修正した',
         'van-button対応（onpush,onholdの設定と動作確認まで行った）',
